@@ -375,36 +375,42 @@ analyzeButton.addEventListener(
         transcript.slice(0, 2500);
 
 
-      const prompt =
-  `You are a study assistant.
-
-Extract the distinct important ideas from this transcript.
+     const messages = [
+  {
+    role: "system",
+    content:
+      "You are a study assistant. Extract accurate and useful information from transcripts."
+  },
+  {
+    role: "user",
+    content: `Extract the important key points from this transcript.
 
 Rules:
-- Return bullet points only.
-- One idea per bullet.
-- Do not copy long sentences.
-- Do not repeat information.
-- Keep every point short.
-- Include important names, numbers, announcements, and future plans.
-- Maximum 6 points.
+- Bullet points only
+- One distinct idea per bullet
+- Maximum 6 bullet points
+- Keep each point short
+- Preserve important names, numbers and announcements
+- Do not copy entire sentences
+- Do not invent information
+- Do not include the word Transcript
 
 Transcript:
 
-${textForAI}`;
+${textForAI}`
+  }
+];
 
+const result = await analyzer(
+  messages,
+  {
+    max_new_tokens: 250,
+    do_sample: false
+  }
+);
 
-      const result =
-        await analyzer(
-          prompt,
-          {
-            max_new_tokens: 200
-          }
-        );
-
-
-      analysisOutput.value =
-        result[0].generated_text;
+analysisOutput.value =
+  result[0].generated_text.at(-1).content;
 
 
       analysisStatus.textContent =
