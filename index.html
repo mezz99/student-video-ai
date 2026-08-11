@@ -189,10 +189,12 @@ button.addEventListener("click", async () => {
 
 
       transcriber = await pipeline(
-        "automatic-speech-recognition",
-        "onnx-community/whisper-tiny",
-        {
-          progress_callback: (data) => {
+  "automatic-speech-recognition",
+  "onnx-community/whisper-tiny.en",
+  {
+    dtype: "fp32",
+
+    progress_callback: (data) => {
 
             if (
               data.status === "progress" &&
