@@ -376,10 +376,22 @@ analyzeButton.addEventListener(
 
 
       const prompt =
-        `Extract 5 important key points from this transcript. 
-        Write them clearly and briefly:
+  `You are a study assistant.
 
-        ${textForAI}`;
+Extract the distinct important ideas from this transcript.
+
+Rules:
+- Return bullet points only.
+- One idea per bullet.
+- Do not copy long sentences.
+- Do not repeat information.
+- Keep every point short.
+- Include important names, numbers, announcements, and future plans.
+- Maximum 6 points.
+
+Transcript:
+
+${textForAI}`;
 
 
       const result =
