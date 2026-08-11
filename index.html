@@ -57,7 +57,7 @@
     }
 
     #keyPointsOutput {
-      min-height: 160px;
+      min-height: 190px;
     }
   </style>
 </head>
@@ -158,7 +158,7 @@ let transcriber = null;
 
 
 // ==========================================
-// SELECT VIDEO
+// SELECT FILE
 // ==========================================
 
 fileInput.addEventListener("change", async () => {
@@ -230,7 +230,7 @@ fileInput.addEventListener("change", async () => {
 
 
 // ==========================================
-// TRANSCRIBE VIDEO
+// TRANSCRIBE
 // ==========================================
 
 transcribeButton.addEventListener(
@@ -245,6 +245,7 @@ transcribeButton.addEventListener(
 
     transcriptOutput.value = "";
     keyPointsOutput.value = "";
+
     keyPointsStatus.textContent = "";
 
 
@@ -305,11 +306,11 @@ transcribeButton.addEventListener(
         );
 
 
-      transcriptOutput.value =
-        result.text || "";
+      const transcript =
+        result.text?.trim() || "";
 
 
-      if (!transcriptOutput.value.trim()) {
+      if (!transcript) {
 
         throw new Error(
           "Whisper returned an empty transcript."
@@ -318,8 +319,13 @@ transcribeButton.addEventListener(
       }
 
 
+      transcriptOutput.value =
+        transcript;
+
+
       status.textContent =
         "Transcript complete.";
+
 
       keyPointsButton.disabled = false;
 
@@ -346,7 +352,7 @@ transcribeButton.addEventListener(
 
 
 // ==========================================
-// GENERATE LIGHTWEIGHT KEY POINTS
+// GENERATE KEY POINTS
 // ==========================================
 
 keyPointsButton.addEventListener(
@@ -376,7 +382,7 @@ keyPointsButton.addEventListener(
       if (!points.length) {
 
         throw new Error(
-          "Could not identify enough useful sentences."
+          "Could not find useful key points."
         );
 
       }
@@ -408,48 +414,76 @@ keyPointsButton.addEventListener(
 
 
 // ==========================================
-// KEY POINT EXTRACTION
+// MAIN KEY-POINT SYSTEM
 // ==========================================
 
-function extractKeyPoints(text, maxPoints = 6) {
+function extractKeyPoints(
+  text,
+  maxPoints = 6
+) {
 
-  const sentences =
+  let sentences =
     splitIntoSentences(text);
 
 
-  if (sentences.length <= maxPoints) {
+  // Break extremely long sentences
+  // into more useful information units.
 
-    return sentences;
+  let candidates = [];
 
+
+  for (const sentence of sentences) {
+
+    const parts =
+      splitLongSentence(sentence);
+
+
+    candidates.push(...parts);
+
+  }
+
+
+  candidates =
+    candidates
+      .map(cleanCandidate)
+      .filter(Boolean)
+      .filter(candidate =>
+        candidate.length >= 25
+      );
+
+
+  if (!candidates.length) {
+    return [];
   }
 
 
   const stopWords =
     new Set([
-      "the","a","an","and","or","but","if","then",
-      "to","of","in","on","for","with","at","by",
-      "from","is","are","was","were","be","been",
-      "being","it","its","this","that","these",
-      "those","i","you","he","she","we","they",
-      "them","our","your","their","my","me",
-      "as","so","do","does","did","have","has",
-      "had","will","would","can","could","should",
-      "about","into","than","too","very","just",
-      "also","more","some","any","not","no",
-      "yes","yeah","oh"
+      "the","a","an","and","or","but",
+      "if","then","to","of","in","on",
+      "for","with","at","by","from",
+      "is","are","was","were","be",
+      "been","being","it","its","this",
+      "that","these","those","i","you",
+      "he","she","we","they","them",
+      "our","your","their","my","me",
+      "as","so","do","does","did",
+      "have","has","had","can","could",
+      "should","would","about","into",
+      "than","too","very","just","also",
+      "some","any","more","not","no",
+      "yes","yeah","oh","um","uh",
+      "well","really","basically",
+      "actually"
     ]);
 
 
-  const wordFrequency = {};
+  const frequency = {};
 
 
-  for (const sentence of sentences) {
+  for (const candidate of candidates) {
 
-    const words =
-      tokenize(sentence);
-
-
-    for (const word of words) {
+    for (const word of tokenize(candidate)) {
 
       if (
         word.length < 3 ||
@@ -459,8 +493,8 @@ function extractKeyPoints(text, maxPoints = 6) {
       }
 
 
-      wordFrequency[word] =
-        (wordFrequency[word] || 0) + 1;
+      frequency[word] =
+        (frequency[word] || 0) + 1;
 
     }
 
@@ -468,11 +502,11 @@ function extractKeyPoints(text, maxPoints = 6) {
 
 
   const scored =
-    sentences.map(
-      (sentence, index) => {
+    candidates.map(
+      (candidate, index) => {
 
         const words =
-          tokenize(sentence);
+          tokenize(candidate);
 
 
         let score = 0;
@@ -482,62 +516,139 @@ function extractKeyPoints(text, maxPoints = 6) {
 
           if (
             !stopWords.has(word) &&
-            wordFrequency[word]
+            frequency[word]
           ) {
 
             score +=
-              wordFrequency[word];
+              frequency[word];
 
           }
 
         }
 
 
-        // Important numbers often matter
-        if (/\d/.test(sentence)) {
-          score += 4;
-        }
+        // Avoid favoring a sentence simply
+        // because it is very long.
 
-
-        // Names / capitalized terms
-        const capitals =
-          sentence.match(
-            /\b[A-Z][a-zA-Z0-9.-]+\b/g
+        score =
+          score /
+          Math.sqrt(
+            Math.max(words.length, 1)
           );
 
 
-        if (capitals) {
-          score +=
-            Math.min(capitals.length, 4);
+        // Numbers are often important
+        if (/\d/.test(candidate)) {
+          score += 5;
         }
 
 
-        // Announcement / future-plan words
+        // Named entities / names
+        const capitalized =
+          candidate.match(
+            /\b[A-Z][A-Za-z0-9.-]+\b/g
+          );
+
+
+        if (capitalized) {
+
+          score +=
+            Math.min(
+              capitalized.length * 1.3,
+              5
+            );
+
+        }
+
+
+        // Important informational language
+
         if (
-          /\b(launch|release|open|open-source|open sourcing|announce|announced|coming|plan|planning|future|new|latest|model|weights|agent|will|going to)\b/i.test(
-            sentence
+          /\b(
+            important|
+            key|
+            main|
+            new|
+            announce|
+            announced|
+            launch|
+            launched|
+            release|
+            released|
+            open-source|
+            open sourcing|
+            model|
+            weights|
+            study|
+            research|
+            result|
+            found|
+            shows|
+            means|
+            because|
+            therefore|
+            cause|
+            effect|
+            risk|
+            benefit|
+            increase|
+            decrease|
+            future|
+            coming|
+            plan|
+            planning|
+            agent|
+            available|
+            first|
+            largest|
+            highest|
+            latest
+          )\b/ix.test(candidate)
+        ) {
+
+          score += 5;
+
+        }
+
+
+        // Early statements often introduce
+        // the central subject.
+
+        if (index <= 2) {
+          score += 2;
+        }
+
+
+        // Conversational questions are usually
+        // not useful as study key points.
+
+        if (
+          /\?$/.test(candidate) ||
+          /\b(do you|what do you|how do you|don't you)\b/i.test(
+            candidate
           )
         ) {
 
-          score += 4;
+          score -= 8;
 
         }
 
 
-        // Avoid tiny sentences
-        if (words.length < 5) {
-          score -= 5;
-        }
+        // Remove obvious filler
 
+        if (
+          /^(yeah|oh|well|um|uh|right|okay)\b/i.test(
+            candidate
+          )
+        ) {
 
-        // Avoid extremely long sentences
-        if (words.length > 45) {
-          score -= 2;
+          score -= 7;
+
         }
 
 
         return {
-          sentence,
+          text: candidate,
           score,
           index
         };
@@ -557,17 +668,17 @@ function extractKeyPoints(text, maxPoints = 6) {
 
   for (const candidate of scored) {
 
-    const tooSimilar =
+    const duplicate =
       selected.some(
-        item =>
-          sentenceSimilarity(
-            item.sentence,
-            candidate.sentence
-          ) > 0.65
+        existing =>
+          similarity(
+            existing.text,
+            candidate.text
+          ) > 0.58
       );
 
 
-    if (!tooSimilar) {
+    if (!duplicate) {
 
       selected.push(candidate);
 
@@ -583,19 +694,20 @@ function extractKeyPoints(text, maxPoints = 6) {
   }
 
 
-  // Put selected points back into original order
+  // Keep a logical order rather than
+  // random score order.
+
   selected.sort(
     (a, b) =>
       a.index - b.index
   );
 
 
-  return selected.map(
-    item =>
-      cleanSentence(
-        item.sentence
-      )
-  );
+  return selected
+    .map(item =>
+      makeConcisePoint(item.text)
+    )
+    .filter(Boolean);
 
 }
 
@@ -603,23 +715,90 @@ function extractKeyPoints(text, maxPoints = 6) {
 
 // ==========================================
 // SENTENCE SPLITTING
+// FIXES THINGS LIKE "1.2"
 // ==========================================
 
 function splitIntoSentences(text) {
 
-  return text
-    .replace(/\s+/g, " ")
-    .trim()
+  const normalized =
+    text
+      .replace(/\s+/g, " ")
+      .trim();
+
+
+  // Best option on modern browsers.
+  // Intl.Segmenter understands sentence
+  // boundaries better than basic regex.
+
+  if (
+    typeof Intl !== "undefined" &&
+    Intl.Segmenter
+  ) {
+
+    try {
+
+      const segmenter =
+        new Intl.Segmenter(
+          "en",
+          {
+            granularity: "sentence"
+          }
+        );
+
+
+      const segments =
+        [...segmenter.segment(normalized)]
+          .map(item =>
+            item.segment.trim()
+          )
+          .filter(item =>
+            item.length > 15
+          );
+
+
+      if (segments.length) {
+        return segments;
+      }
+
+    }
+
+    catch (error) {
+
+      console.warn(
+        "Intl.Segmenter fallback",
+        error
+      );
+
+    }
+
+  }
+
+
+  // Fallback:
+  // temporarily protect decimal points
+  // such as 1.2 or 3.14.
+
+  const protectedText =
+    normalized.replace(
+      /(\d)\.(\d)/g,
+      "$1__DECIMAL_DOT__$2"
+    );
+
+
+  return protectedText
     .match(
       /[^.!?]+[.!?]+|[^.!?]+$/g
     )
-    ?.map(
-      sentence =>
-        sentence.trim()
+    ?.map(sentence =>
+      sentence
+        .replace(
+          /__DECIMAL_DOT__/g,
+          "."
+        )
+        .trim()
     )
-    .filter(
-      sentence =>
-        sentence.length > 20
+    .filter(sentence =>
+      sentence.length > 15
     ) || [];
 
 }
@@ -627,7 +806,198 @@ function splitIntoSentences(text) {
 
 
 // ==========================================
-// WORD TOKENIZER
+// SPLIT ONLY VERY LONG SENTENCES
+// ==========================================
+
+function splitLongSentence(sentence) {
+
+  if (sentence.length < 210) {
+
+    return [sentence];
+
+  }
+
+
+  const parts =
+    sentence.split(
+      /;\s+|,\s+(?=(?:and|but|while|because|so)\s+(?:we|they|it|this|that|you|he|she|there|the)\b)/i
+    );
+
+
+  if (parts.length <= 1) {
+
+    return [sentence];
+
+  }
+
+
+  return parts
+    .map(part => part.trim())
+    .filter(part =>
+      part.length > 25
+    );
+
+}
+
+
+
+// ==========================================
+// REMOVE SPEECH FILLER
+// ==========================================
+
+function cleanCandidate(text) {
+
+  let cleaned =
+    text
+      .replace(/\s+/g, " ")
+      .trim();
+
+
+  cleaned =
+    cleaned.replace(
+      /^(yeah|oh|um|uh|well|okay|ok|right|basically|actually)[,.]?\s+/i,
+      ""
+    );
+
+
+  cleaned =
+    cleaned.replace(
+      /^I(?:'m| am) (?:proud|happy|excited) to (?:share|announce) that\s+/i,
+      ""
+    );
+
+
+  cleaned =
+    cleaned.replace(
+      /^I wanted to (?:share|say|tell you) that\s+/i,
+      ""
+    );
+
+
+  cleaned =
+    cleaned.replace(
+      /\s+and I(?:'m| am) looking forward to sharing more soon\.?$/i,
+      ""
+    );
+
+
+  return cleaned.trim();
+
+}
+
+
+
+// ==========================================
+// MAKE BULLETS CLEANER
+// ==========================================
+
+function makeConcisePoint(text) {
+
+  let point =
+    cleanCandidate(text);
+
+
+  point =
+    point.replace(
+      /^We're also\s+/i,
+      "We are "
+    );
+
+
+  point =
+    point.replace(
+      /^We've got\s+/i,
+      "There are "
+    );
+
+
+  // Remove duplicate spaces again
+
+  point =
+    point.replace(/\s+/g, " ").trim();
+
+
+  // Avoid absurdly long bullets
+
+  if (point.length > 220) {
+
+    const shortened =
+      findGoodCut(
+        point,
+        200
+      );
+
+
+    point =
+      shortened + "...";
+
+  }
+
+
+  // Capitalize beginning
+
+  point =
+    point.charAt(0).toUpperCase() +
+    point.slice(1);
+
+
+  return point;
+
+}
+
+
+
+// ==========================================
+// FIND SAFE PLACE TO SHORTEN
+// ==========================================
+
+function findGoodCut(
+  text,
+  targetLength
+) {
+
+  const portion =
+    text.slice(
+      0,
+      targetLength
+    );
+
+
+  const comma =
+    portion.lastIndexOf(",");
+
+
+  const conjunction =
+    Math.max(
+      portion.lastIndexOf(" and "),
+      portion.lastIndexOf(" but ")
+    );
+
+
+  const cut =
+    Math.max(
+      comma,
+      conjunction
+    );
+
+
+  if (cut > 100) {
+
+    return text
+      .slice(0, cut)
+      .trim();
+
+  }
+
+
+  return portion.trim();
+
+}
+
+
+
+// ==========================================
+// TOKENIZATION
 // ==========================================
 
 function tokenize(text) {
@@ -635,7 +1005,7 @@ function tokenize(text) {
   return text
     .toLowerCase()
     .replace(
-      /[^a-z0-9'-]/g,
+      /[^a-z0-9'.-]/g,
       " "
     )
     .split(/\s+/)
@@ -646,30 +1016,29 @@ function tokenize(text) {
 
 
 // ==========================================
-// REMOVE DUPLICATE-LIKE POINTS
+// DUPLICATE DETECTION
 // ==========================================
 
-function sentenceSimilarity(
-  sentenceA,
-  sentenceB
-) {
+function similarity(a, b) {
 
   const wordsA =
     new Set(
-      tokenize(sentenceA)
+      tokenize(a)
     );
+
 
   const wordsB =
     new Set(
-      tokenize(sentenceB)
+      tokenize(b)
     );
 
 
   const intersection =
-    [...wordsA].filter(
-      word =>
+    [...wordsA]
+      .filter(word =>
         wordsB.has(word)
-    ).length;
+      )
+      .length;
 
 
   const union =
@@ -679,48 +1048,16 @@ function sentenceSimilarity(
     ]).size;
 
 
-  if (!union) {
-    return 0;
-  }
-
-
-  return intersection / union;
+  return union
+    ? intersection / union
+    : 0;
 
 }
 
 
 
 // ==========================================
-// CLEAN SENTENCE
-// ==========================================
-
-function cleanSentence(sentence) {
-
-  let cleaned =
-    sentence
-      .replace(/\s+/g, " ")
-      .trim();
-
-
-  if (
-    cleaned.length > 260
-  ) {
-
-    cleaned =
-      cleaned.slice(0, 257)
-      .trim() + "...";
-
-  }
-
-
-  return cleaned;
-
-}
-
-
-
-// ==========================================
-// GET VIDEO DURATION
+// MEDIA DURATION
 // ==========================================
 
 function getMediaDuration(file) {
@@ -748,6 +1085,7 @@ function getMediaDuration(file) {
 
         const duration =
           media.duration;
+
 
         URL.revokeObjectURL(url);
 
@@ -779,7 +1117,7 @@ function getMediaDuration(file) {
 
 
 // ==========================================
-// CONVERT VIDEO AUDIO FOR WHISPER
+// EXTRACT AUDIO FOR WHISPER
 // ==========================================
 
 async function convertToWhisperAudio(file) {
