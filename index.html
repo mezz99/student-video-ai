@@ -9,8 +9,8 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 700px;
-      margin: 60px auto;
+      max-width: 800px;
+      margin: 40px auto;
       padding: 20px;
       background: #f7f7f7;
     }
@@ -26,27 +26,37 @@
       margin-top: 0;
     }
 
-    input,
-    button {
-      margin-top: 15px;
+    h2 {
+      margin-top: 30px;
     }
 
     button {
       padding: 12px 20px;
+      margin-top: 15px;
       cursor: pointer;
+      font-size: 16px;
     }
 
-    #status {
+    input {
+      margin-top: 15px;
+    }
+
+    .status {
       margin-top: 20px;
       font-weight: bold;
     }
 
-    #output {
+    textarea {
       width: 100%;
-      min-height: 220px;
-      margin-top: 20px;
+      min-height: 200px;
+      margin-top: 15px;
       padding: 12px;
       box-sizing: border-box;
+      font-size: 15px;
+    }
+
+    #analysisOutput {
+      min-height: 160px;
     }
   </style>
 </head>
@@ -58,7 +68,7 @@
   <h1>Student Video AI</h1>
 
   <p>
-    Upload a lesson video and generate a transcript directly on your device.
+    Upload a lesson video. AI will transcribe it and extract the key points directly on your device.
   </p>
 
   <input
@@ -73,14 +83,33 @@
     Generate Transcript
   </button>
 
-  <div id="status">
+  <div id="status" class="status">
     Select a video.
   </div>
+
+
+  <h2>Transcript</h2>
 
   <textarea
     id="output"
     readonly
     placeholder="Your transcript will appear here..."
+  ></textarea>
+
+
+  <button id="analyzeButton" disabled>
+    Generate Key Points
+  </button>
+
+  <div id="analysisStatus" class="status"></div>
+
+
+  <h2>Key Points</h2>
+
+  <textarea
+    id="analysisOutput"
+    readonly
+    placeholder="Your key points will appear here..."
   ></textarea>
 
 </div>
@@ -93,29 +122,56 @@ import {
 } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
 
 
-const fileInput = document.getElementById("fileInput");
-const button = document.getElementById("transcribeButton");
-const status = document.getElementById("status");
-const output = document.getElementById("output");
+const fileInput =
+  document.getElementById("fileInput");
+
+const transcribeButton =
+  document.getElementById("transcribeButton");
+
+const status =
+  document.getElementById("status");
+
+const output =
+  document.getElementById("output");
+
+const analyzeButton =
+  document.getElementById("analyzeButton");
+
+const analysisStatus =
+  document.getElementById("analysisStatus");
+
+const analysisOutput =
+  document.getElementById("analysisOutput");
 
 
-const MAX_SIZE = 100 * 1024 * 1024;
-const MAX_DURATION = 10 * 60;
+const MAX_SIZE =
+  100 * 1024 * 1024;
+
+const MAX_DURATION =
+  10 * 60;
+
 
 let selectedFile = null;
 let transcriber = null;
+let analyzer = null;
 
+
+
+// ------------------------------
+// SELECT VIDEO
+// ------------------------------
 
 fileInput.addEventListener("change", async () => {
 
   output.value = "";
-  button.disabled = true;
+  analysisOutput.value = "";
+
+  transcribeButton.disabled = true;
+  analyzeButton.disabled = true;
 
   const file = fileInput.files[0];
 
-  if (!file) {
-    return;
-  }
+  if (!file) return;
 
 
   if (file.size > MAX_SIZE) {
@@ -127,12 +183,15 @@ fileInput.addEventListener("change", async () => {
   }
 
 
-  status.textContent = "Checking video...";
+  status.textContent =
+    "Checking video...";
 
 
   try {
 
-    const duration = await getMediaDuration(file);
+    const duration =
+      await getMediaDuration(file);
+
 
     if (duration > MAX_DURATION) {
 
@@ -148,7 +207,7 @@ fileInput.addEventListener("change", async () => {
     status.textContent =
       `Ready — ${Math.round(duration)} seconds`;
 
-    button.disabled = false;
+    transcribeButton.disabled = false;
 
   }
 
@@ -164,138 +223,265 @@ fileInput.addEventListener("change", async () => {
 });
 
 
-button.addEventListener("click", async () => {
 
-  if (!selectedFile) return;
+// ------------------------------
+// TRANSCRIBE VIDEO
+// ------------------------------
 
+transcribeButton.addEventListener(
+  "click",
+  async () => {
 
-  button.disabled = true;
-  output.value = "";
-
-
-  try {
-
-    status.textContent =
-      "Extracting audio from video...";
+    if (!selectedFile) return;
 
 
-    const audio = await convertToWhisperAudio(selectedFile);
+    transcribeButton.disabled = true;
+    analyzeButton.disabled = true;
+
+    output.value = "";
+    analysisOutput.value = "";
 
 
-    if (!transcriber) {
+    try {
 
       status.textContent =
-        "Loading Whisper AI model — first time may take a while...";
+        "Extracting audio...";
 
 
-      transcriber = await pipeline(
-  "automatic-speech-recognition",
-  "onnx-community/whisper-tiny.en",
-  {
-    dtype: "fp32",
+      const audio =
+        await convertToWhisperAudio(
+          selectedFile
+        );
 
-    progress_callback: (data) => {
 
-            if (
-              data.status === "progress" &&
-              data.progress
-            ) {
+      if (!transcriber) {
 
-              status.textContent =
-                `Loading AI: ${Math.round(data.progress)}%`;
+        status.textContent =
+          "Loading Whisper AI...";
+
+
+        transcriber = await pipeline(
+          "automatic-speech-recognition",
+          "onnx-community/whisper-tiny.en",
+          {
+            dtype: "fp32",
+
+            progress_callback: (data) => {
+
+              if (
+                data.status === "progress" &&
+                data.progress
+              ) {
+
+                status.textContent =
+                  `Loading Whisper: ${Math.round(data.progress)}%`;
+
+              }
 
             }
-
           }
-        }
-      );
+        );
+
+      }
+
+
+      status.textContent =
+        "Transcribing video...";
+
+
+      const result =
+        await transcriber(
+          audio,
+          {
+            chunk_length_s: 30,
+            stride_length_s: 5
+          }
+        );
+
+
+      output.value =
+        result.text;
+
+
+      status.textContent =
+        "Transcript complete.";
+
+
+      analyzeButton.disabled = false;
 
     }
 
+    catch (error) {
 
-    status.textContent =
-      "AI is transcribing your video...";
+      console.error(error);
+
+      status.textContent =
+        "Error: " + error.message;
+
+    }
+
+    finally {
+
+      transcribeButton.disabled = false;
+
+    }
+
+  }
+);
 
 
-    const result = await transcriber(
-      audio,
-      {
-        chunk_length_s: 30,
-        stride_length_s: 5
+
+// ------------------------------
+// GENERATE KEY POINTS
+// ------------------------------
+
+analyzeButton.addEventListener(
+  "click",
+  async () => {
+
+    const transcript =
+      output.value.trim();
+
+
+    if (!transcript) return;
+
+
+    analyzeButton.disabled = true;
+    analysisOutput.value = "";
+
+
+    try {
+
+      if (!analyzer) {
+
+        analysisStatus.textContent =
+          "Loading Key Points AI...";
+
+
+        analyzer = await pipeline(
+          "text2text-generation",
+          "Xenova/flan-t5-small"
+        );
+
       }
-    );
 
 
-    output.value = result.text;
+      analysisStatus.textContent =
+        "Analyzing transcript...";
 
-    status.textContent =
-      "Transcript complete.";
+
+      // Keep first test reasonably small
+      const textForAI =
+        transcript.slice(0, 2500);
+
+
+      const prompt =
+        `Extract 5 important key points from this transcript. 
+        Write them clearly and briefly:
+
+        ${textForAI}`;
+
+
+      const result =
+        await analyzer(
+          prompt,
+          {
+            max_new_tokens: 200
+          }
+        );
+
+
+      analysisOutput.value =
+        result[0].generated_text;
+
+
+      analysisStatus.textContent =
+        "Key points complete.";
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      analysisStatus.textContent =
+        "Error: " + error.message;
+
+    }
+
+    finally {
+
+      analyzeButton.disabled = false;
+
+    }
 
   }
+);
 
-  catch (error) {
 
-    console.error(error);
 
-    status.textContent =
-      "Error: " + error.message;
-
-  }
-
-  finally {
-
-    button.disabled = false;
-
-  }
-
-});
-
+// ------------------------------
+// GET VIDEO DURATION
+// ------------------------------
 
 function getMediaDuration(file) {
 
-  return new Promise((resolve, reject) => {
+  return new Promise(
+    (resolve, reject) => {
 
-    const media =
-      document.createElement(
-        file.type.startsWith("video")
-          ? "video"
-          : "audio"
-      );
-
-
-    const url = URL.createObjectURL(file);
-
-    media.preload = "metadata";
+      const media =
+        document.createElement(
+          file.type.startsWith("video")
+            ? "video"
+            : "audio"
+        );
 
 
-    media.onloadedmetadata = () => {
-
-      const duration = media.duration;
-
-      URL.revokeObjectURL(url);
-
-      resolve(duration);
-
-    };
+      const url =
+        URL.createObjectURL(file);
 
 
-    media.onerror = () => {
-
-      URL.revokeObjectURL(url);
-
-      reject(
-        new Error("Unsupported media file")
-      );
-
-    };
+      media.preload =
+        "metadata";
 
 
-    media.src = url;
+      media.onloadedmetadata = () => {
 
-  });
+        const duration =
+          media.duration;
+
+        URL.revokeObjectURL(url);
+
+        resolve(duration);
+
+      };
+
+
+      media.onerror = () => {
+
+        URL.revokeObjectURL(url);
+
+        reject(
+          new Error(
+            "Unsupported media file"
+          )
+        );
+
+      };
+
+
+      media.src = url;
+
+    }
+  );
 
 }
 
+
+
+// ------------------------------
+// EXTRACT / CONVERT AUDIO
+// ------------------------------
 
 async function convertToWhisperAudio(file) {
 
@@ -324,20 +510,22 @@ async function convertToWhisperAudio(file) {
     await audioContext.close();
 
     throw new Error(
-      "Your browser could not extract the audio from this video. Try an MP4 video or an audio file for this first test."
+      "Your browser could not extract the audio from this video."
     );
 
   }
 
 
-  const TARGET_RATE = 16000;
+  const TARGET_RATE =
+    16000;
 
 
   const offlineContext =
     new OfflineAudioContext(
       1,
       Math.ceil(
-        decodedAudio.duration * TARGET_RATE
+        decodedAudio.duration *
+        TARGET_RATE
       ),
       TARGET_RATE
     );
@@ -347,11 +535,14 @@ async function convertToWhisperAudio(file) {
     offlineContext.createBufferSource();
 
 
-  source.buffer = decodedAudio;
+  source.buffer =
+    decodedAudio;
+
 
   source.connect(
     offlineContext.destination
   );
+
 
   source.start();
 
