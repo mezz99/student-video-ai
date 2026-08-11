@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Student Video AI</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 60px auto;
+      padding: 20px;
+      background: #f7f7f7;
+    }
+
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    input,
+    button {
+      margin-top: 15px;
+    }
+
+    button {
+      padding: 12px 20px;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+    #output {
+      width: 100%;
+      min-height: 220px;
+      margin-top: 20px;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <h1>Student Video AI</h1>
+
+  <p>
+    Upload a lesson video and generate a transcript directly on your device.
+  </p>
+
+  <input
+    type="file"
+    id="fileInput"
+    accept="video/*,audio/*"
+  />
+
+  <br>
+
+  <button id="transcribeButton" disabled>
+    Generate Transcript
+  </button>
+
+  <div id="status">
+    Select a video.
+  </div>
+
+  <textarea
+    id="output"
+    readonly
+    placeholder="Your transcript will appear here..."
+  ></textarea>
+
+</div>
+
+
+<script type="module">
+
+import {
+  pipeline
+} from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
+
+
+const fileInput = document.getElementById("fileInput");
+const button = document.getElementById("transcribeButton");
+const status = document.getElementById("status");
+const output = document.getElementById("output");
+
+
+const MAX_SIZE = 100 * 1024 * 1024;
+const MAX_DURATION = 10 * 60;
+
+let selectedFile = null;
+let transcriber = null;
+
+
+fileInput.addEventListener("change", async () => {
+
+  output.value = "";
+  button.disabled = true;
+
+  const file = fileInput.files[0];
+
+  if (!file) {
+    return;
+  }
+
+
+  if (file.size > MAX_SIZE) {
+
+    status.textContent =
+      "Video too large. Maximum size is 100 MB.";
+
+    return;
+  }
+
+
+  status.textContent = "Checking video...";
+
+
+  try {
+
+    const duration = await getMediaDuration(file);
+
+    if (duration > MAX_DURATION) {
+
+      status.textContent =
+        "Video too long. Maximum duration is 10 minutes.";
+
+      return;
+    }
+
+
+    selectedFile = file;
+
+    status.textContent =
+      `Ready — ${Math.round(duration)} seconds`;
+
+    button.disabled = false;
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    status.textContent =
+      "Could not read this video.";
+
+  }
+
+});
+
+
+button.addEventListener("click", async () => {
+
+  if (!selectedFile) return;
+
+
+  button.disabled = true;
+  output.value = "";
+
+
+  try {
+
+    status.textContent =
+      "Extracting audio from video...";
+
+
+    const audio = await convertToWhisperAudio(selectedFile);
+
+
+    if (!transcriber) {
+
+      status.textContent =
+        "Loading Whisper AI model — first time may take a while...";
+
+
+      transcriber = await pipeline(
+        "automatic-speech-recognition",
+        "onnx-community/whisper-tiny",
+        {
+          progress_callback: (data) => {
+
+            if (
+              data.status === "progress" &&
+              data.progress
+            ) {
+
+              status.textContent =
+                `Loading AI: ${Math.round(data.progress)}%`;
+
+            }
+
+          }
+        }
+      );
+
+    }
+
+
+    status.textContent =
+      "AI is transcribing your video...";
+
+
+    const result = await transcriber(
+      audio,
+      {
+        chunk_length_s: 30,
+        stride_length_s: 5
+      }
+    );
+
+
+    output.value = result.text;
+
+    status.textContent =
+      "Transcript complete.";
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    status.textContent =
+      "Error: " + error.message;
+
+  }
+
+  finally {
+
+    button.disabled = false;
+
+  }
+
+});
+
+
+function getMediaDuration(file) {
+
+  return new Promise((resolve, reject) => {
+
+    const media =
+      document.createElement(
+        file.type.startsWith("video")
+          ? "video"
+          : "audio"
+      );
+
+
+    const url = URL.createObjectURL(file);
+
+    media.preload = "metadata";
+
+
+    media.onloadedmetadata = () => {
+
+      const duration = media.duration;
+
+      URL.revokeObjectURL(url);
+
+      resolve(duration);
+
+    };
+
+
+    media.onerror = () => {
+
+      URL.revokeObjectURL(url);
+
+      reject(
+        new Error("Unsupported media file")
+      );
+
+    };
+
+
+    media.src = url;
+
+  });
+
+}
+
+
+async function convertToWhisperAudio(file) {
+
+  const arrayBuffer =
+    await file.arrayBuffer();
+
+
+  const audioContext =
+    new AudioContext();
+
+
+  let decodedAudio;
+
+
+  try {
+
+    decodedAudio =
+      await audioContext.decodeAudioData(
+        arrayBuffer.slice(0)
+      );
+
+  }
+
+  catch (error) {
+
+    await audioContext.close();
+
+    throw new Error(
+      "Your browser could not extract the audio from this video. Try an MP4 video or an audio file for this first test."
+    );
+
+  }
+
+
+  const TARGET_RATE = 16000;
+
+
+  const offlineContext =
+    new OfflineAudioContext(
+      1,
+      Math.ceil(
+        decodedAudio.duration * TARGET_RATE
+      ),
+      TARGET_RATE
+    );
+
+
+  const source =
+    offlineContext.createBufferSource();
+
+
+  source.buffer = decodedAudio;
+
+  source.connect(
+    offlineContext.destination
+  );
+
+  source.start();
+
+
+  const rendered =
+    await offlineContext.startRendering();
+
+
+  const audio =
+    new Float32Array(
+      rendered.getChannelData(0)
+    );
+
+
+  await audioContext.close();
+
+
+  return audio;
+
+}
+
+</script>
+
+</body>
+</html>
