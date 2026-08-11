@@ -9,7 +9,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
+      max-width: 850px;
       margin: 40px auto;
       padding: 20px;
       background: #f7f7f7;
@@ -42,7 +42,7 @@
     }
 
     .status {
-      margin-top: 20px;
+      margin-top: 18px;
       font-weight: bold;
     }
 
@@ -56,7 +56,7 @@
     }
 
     #analysisOutput {
-      min-height: 160px;
+      min-height: 180px;
     }
   </style>
 </head>
@@ -68,7 +68,7 @@
   <h1>Student Video AI</h1>
 
   <p>
-    Upload a lesson video. AI will transcribe it and extract the key points directly on your device.
+    Upload a lesson video and let AI transcribe and analyze it directly on your device.
   </p>
 
   <input
@@ -157,9 +157,9 @@ let analyzer = null;
 
 
 
-// ------------------------------
+// ==========================================
 // SELECT VIDEO
-// ------------------------------
+// ==========================================
 
 fileInput.addEventListener("change", async () => {
 
@@ -169,9 +169,14 @@ fileInput.addEventListener("change", async () => {
   transcribeButton.disabled = true;
   analyzeButton.disabled = true;
 
+  selectedFile = null;
+
   const file = fileInput.files[0];
 
-  if (!file) return;
+  if (!file) {
+    status.textContent = "Select a video.";
+    return;
+  }
 
 
   if (file.size > MAX_SIZE) {
@@ -224,15 +229,17 @@ fileInput.addEventListener("change", async () => {
 
 
 
-// ------------------------------
-// TRANSCRIBE VIDEO
-// ------------------------------
+// ==========================================
+// TRANSCRIBE
+// ==========================================
 
 transcribeButton.addEventListener(
   "click",
   async () => {
 
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      return;
+    }
 
 
     transcribeButton.disabled = true;
@@ -240,6 +247,7 @@ transcribeButton.addEventListener(
 
     output.value = "";
     analysisOutput.value = "";
+    analysisStatus.textContent = "";
 
 
     try {
@@ -270,7 +278,7 @@ transcribeButton.addEventListener(
 
               if (
                 data.status === "progress" &&
-                data.progress
+                typeof data.progress === "number"
               ) {
 
                 status.textContent =
@@ -300,12 +308,20 @@ transcribeButton.addEventListener(
 
 
       output.value =
-        result.text;
+        result.text || "";
+
+
+      if (!output.value.trim()) {
+
+        throw new Error(
+          "Whisper returned an empty transcript."
+        );
+
+      }
 
 
       status.textContent =
         "Transcript complete.";
-
 
       analyzeButton.disabled = false;
 
@@ -331,9 +347,9 @@ transcribeButton.addEventListener(
 
 
 
-// ------------------------------
-// GENERATE KEY POINTS
-// ------------------------------
+// ==========================================
+// KEY POINTS WITH QWEN
+// ==========================================
 
 analyzeButton.addEventListener(
   "click",
@@ -343,74 +359,142 @@ analyzeButton.addEventListener(
       output.value.trim();
 
 
-    if (!transcript) return;
+    if (!transcript) {
+      return;
+    }
 
 
     analyzeButton.disabled = true;
+
     analysisOutput.value = "";
 
 
     try {
 
+      // --------------------------
+      // LOAD QWEN
+      // --------------------------
+
       if (!analyzer) {
 
         analysisStatus.textContent =
-          "Loading Key Points AI...";
+          "Loading Qwen AI model — first time may take a while...";
 
 
         analyzer = await pipeline(
-          "text2text-generation",
-          "Xenova/flan-t5-small"
+          "text-generation",
+          "onnx-community/Qwen2.5-0.5B-Instruct",
+          {
+            dtype: "q4",
+
+            progress_callback: (data) => {
+
+              if (
+                data.status === "progress" &&
+                typeof data.progress === "number"
+              ) {
+
+                analysisStatus.textContent =
+                  `Loading Qwen: ${Math.round(data.progress)}%`;
+
+              }
+
+            }
+          }
         );
 
       }
 
 
       analysisStatus.textContent =
-        "Analyzing transcript...";
+        "AI is finding the important points...";
 
 
-      // Keep first test reasonably small
+      // Keep prototype input reasonably small
       const textForAI =
-        transcript.slice(0, 2500);
+        transcript.slice(0, 3500);
 
 
-     const messages = [
-  {
-    role: "system",
-    content:
-      "You are a study assistant. Extract accurate and useful information from transcripts."
-  },
-  {
-    role: "user",
-    content: `Extract the important key points from this transcript.
+      // --------------------------
+      // CHAT PROMPT
+      // --------------------------
+
+      const messages = [
+
+        {
+          role: "system",
+
+          content:
+            "You are a study assistant. Your job is to understand transcripts and extract accurate, useful information."
+        },
+
+        {
+          role: "user",
+
+          content:
+`Extract the most important key points from the transcript below.
 
 Rules:
-- Bullet points only
-- One distinct idea per bullet
-- Maximum 6 bullet points
-- Keep each point short
-- Preserve important names, numbers and announcements
-- Do not copy entire sentences
-- Do not invent information
-- Do not include the word Transcript
+
+- Return between 3 and 6 bullet points.
+- Each bullet must contain one distinct idea.
+- Keep every bullet short and clear.
+- Include important names, numbers and announcements.
+- Include important future plans.
+- Do not copy entire sentences from the transcript.
+- Do not repeat the same information.
+- Do not invent any information.
+- Do not write an introduction.
+- Do not write the word "Transcript".
+- Start each point with "-".
 
 Transcript:
 
 ${textForAI}`
-  }
-];
+        }
 
-const result = await analyzer(
-  messages,
-  {
-    max_new_tokens: 250,
-    do_sample: false
-  }
-);
+      ];
 
-analysisOutput.value =
-  result[0].generated_text.at(-1).content;
+
+      // --------------------------
+      // RUN QWEN
+      // --------------------------
+
+      const result =
+        await analyzer(
+          messages,
+          {
+            max_new_tokens: 220,
+            do_sample: false
+          }
+        );
+
+
+      console.log(
+        "RAW QWEN RESULT:",
+        result
+      );
+
+
+      // --------------------------
+      // SAFELY READ RESULT
+      // --------------------------
+
+      const finalText =
+        extractQwenAnswer(result);
+
+
+      if (!finalText) {
+
+        throw new Error(
+          "Qwen generated a response but the website could not read it."
+        );
+
+      }
+
+
+      analysisOutput.value =
+        finalText.trim();
 
 
       analysisStatus.textContent =
@@ -438,9 +522,103 @@ analysisOutput.value =
 
 
 
-// ------------------------------
+// ==========================================
+// READ QWEN OUTPUT SAFELY
+// ==========================================
+
+function extractQwenAnswer(result) {
+
+  if (!result) {
+    return "";
+  }
+
+
+  // Transformers.js may return
+  // either an array or an object.
+
+  const first =
+    Array.isArray(result)
+      ? result[0]
+      : result;
+
+
+  if (!first) {
+    return "";
+  }
+
+
+  const generated =
+    first.generated_text;
+
+
+  // CASE 1:
+  // generated_text is already plain text
+
+  if (typeof generated === "string") {
+
+    return generated;
+
+  }
+
+
+  // CASE 2:
+  // generated_text is a chat array
+
+  if (Array.isArray(generated)) {
+
+    // Search backwards for assistant reply
+
+    for (
+      let i = generated.length - 1;
+      i >= 0;
+      i--
+    ) {
+
+      const message =
+        generated[i];
+
+
+      if (
+        message &&
+        message.role === "assistant" &&
+        typeof message.content === "string"
+      ) {
+
+        return message.content;
+
+      }
+
+    }
+
+
+    // Fallback:
+    // take last message containing text
+
+    const last =
+      generated[generated.length - 1];
+
+
+    if (
+      last &&
+      typeof last.content === "string"
+    ) {
+
+      return last.content;
+
+    }
+
+  }
+
+
+  return "";
+
+}
+
+
+
+// ==========================================
 // GET VIDEO DURATION
-// ------------------------------
+// ==========================================
 
 function getMediaDuration(file) {
 
@@ -481,14 +659,15 @@ function getMediaDuration(file) {
 
         reject(
           new Error(
-            "Unsupported media file"
+            "Unsupported media file."
           )
         );
 
       };
 
 
-      media.src = url;
+      media.src =
+        url;
 
     }
   );
@@ -497,9 +676,9 @@ function getMediaDuration(file) {
 
 
 
-// ------------------------------
-// EXTRACT / CONVERT AUDIO
-// ------------------------------
+// ==========================================
+// CONVERT VIDEO AUDIO FOR WHISPER
+// ==========================================
 
 async function convertToWhisperAudio(file) {
 
@@ -528,7 +707,7 @@ async function convertToWhisperAudio(file) {
     await audioContext.close();
 
     throw new Error(
-      "Your browser could not extract the audio from this video."
+      "Your browser could not extract audio from this video."
     );
 
   }
