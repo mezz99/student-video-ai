@@ -48,15 +48,16 @@
 
     textarea {
       width: 100%;
-      min-height: 200px;
+      min-height: 190px;
       margin-top: 15px;
       padding: 12px;
       box-sizing: border-box;
       font-size: 15px;
+      line-height: 1.5;
     }
 
-    #analysisOutput {
-      min-height: 180px;
+    #keyPointsOutput {
+      min-height: 160px;
     }
   </style>
 </head>
@@ -68,7 +69,7 @@
   <h1>Student Video AI</h1>
 
   <p>
-    Upload a lesson video and let AI transcribe and analyze it directly on your device.
+    Upload a lesson video and generate a transcript and key points directly on your device.
   </p>
 
   <input
@@ -91,23 +92,23 @@
   <h2>Transcript</h2>
 
   <textarea
-    id="output"
+    id="transcriptOutput"
     readonly
     placeholder="Your transcript will appear here..."
   ></textarea>
 
 
-  <button id="analyzeButton" disabled>
+  <button id="keyPointsButton" disabled>
     Generate Key Points
   </button>
 
-  <div id="analysisStatus" class="status"></div>
+  <div id="keyPointsStatus" class="status"></div>
 
 
   <h2>Key Points</h2>
 
   <textarea
-    id="analysisOutput"
+    id="keyPointsOutput"
     readonly
     placeholder="Your key points will appear here..."
   ></textarea>
@@ -131,17 +132,17 @@ const transcribeButton =
 const status =
   document.getElementById("status");
 
-const output =
-  document.getElementById("output");
+const transcriptOutput =
+  document.getElementById("transcriptOutput");
 
-const analyzeButton =
-  document.getElementById("analyzeButton");
+const keyPointsButton =
+  document.getElementById("keyPointsButton");
 
-const analysisStatus =
-  document.getElementById("analysisStatus");
+const keyPointsStatus =
+  document.getElementById("keyPointsStatus");
 
-const analysisOutput =
-  document.getElementById("analysisOutput");
+const keyPointsOutput =
+  document.getElementById("keyPointsOutput");
 
 
 const MAX_SIZE =
@@ -153,7 +154,6 @@ const MAX_DURATION =
 
 let selectedFile = null;
 let transcriber = null;
-let analyzer = null;
 
 
 
@@ -163,11 +163,11 @@ let analyzer = null;
 
 fileInput.addEventListener("change", async () => {
 
-  output.value = "";
-  analysisOutput.value = "";
+  transcriptOutput.value = "";
+  keyPointsOutput.value = "";
 
   transcribeButton.disabled = true;
-  analyzeButton.disabled = true;
+  keyPointsButton.disabled = true;
 
   selectedFile = null;
 
@@ -230,24 +230,22 @@ fileInput.addEventListener("change", async () => {
 
 
 // ==========================================
-// TRANSCRIBE
+// TRANSCRIBE VIDEO
 // ==========================================
 
 transcribeButton.addEventListener(
   "click",
   async () => {
 
-    if (!selectedFile) {
-      return;
-    }
+    if (!selectedFile) return;
 
 
     transcribeButton.disabled = true;
-    analyzeButton.disabled = true;
+    keyPointsButton.disabled = true;
 
-    output.value = "";
-    analysisOutput.value = "";
-    analysisStatus.textContent = "";
+    transcriptOutput.value = "";
+    keyPointsOutput.value = "";
+    keyPointsStatus.textContent = "";
 
 
     try {
@@ -307,11 +305,11 @@ transcribeButton.addEventListener(
         );
 
 
-      output.value =
+      transcriptOutput.value =
         result.text || "";
 
 
-      if (!output.value.trim()) {
+      if (!transcriptOutput.value.trim()) {
 
         throw new Error(
           "Whisper returned an empty transcript."
@@ -323,7 +321,7 @@ transcribeButton.addEventListener(
       status.textContent =
         "Transcript complete.";
 
-      analyzeButton.disabled = false;
+      keyPointsButton.disabled = false;
 
     }
 
@@ -348,156 +346,49 @@ transcribeButton.addEventListener(
 
 
 // ==========================================
-// KEY POINTS WITH QWEN
+// GENERATE LIGHTWEIGHT KEY POINTS
 // ==========================================
 
-analyzeButton.addEventListener(
+keyPointsButton.addEventListener(
   "click",
-  async () => {
+  () => {
 
     const transcript =
-      output.value.trim();
+      transcriptOutput.value.trim();
 
 
-    if (!transcript) {
-      return;
-    }
+    if (!transcript) return;
 
 
-    analyzeButton.disabled = true;
-
-    analysisOutput.value = "";
+    keyPointsStatus.textContent =
+      "Finding important points...";
 
 
     try {
 
-      // --------------------------
-      // LOAD QWEN
-      // --------------------------
-
-      if (!analyzer) {
-
-        analysisStatus.textContent =
-          "Loading Qwen AI model — first time may take a while...";
-
-
-        analyzer = await pipeline(
-          "text-generation",
-          "onnx-community/Qwen2.5-0.5B-Instruct",
-          {
-            dtype: "q4",
-
-            progress_callback: (data) => {
-
-              if (
-                data.status === "progress" &&
-                typeof data.progress === "number"
-              ) {
-
-                analysisStatus.textContent =
-                  `Loading Qwen: ${Math.round(data.progress)}%`;
-
-              }
-
-            }
-          }
-        );
-
-      }
-
-
-      analysisStatus.textContent =
-        "AI is finding the important points...";
-
-
-      // Keep prototype input reasonably small
-      const textForAI =
-        transcript.slice(0, 3500);
-
-
-      // --------------------------
-      // CHAT PROMPT
-      // --------------------------
-
-      const messages = [
-
-        {
-          role: "system",
-
-          content:
-            "You are a study assistant. Your job is to understand transcripts and extract accurate, useful information."
-        },
-
-        {
-          role: "user",
-
-          content:
-`Extract the most important key points from the transcript below.
-
-Rules:
-
-- Return between 3 and 6 bullet points.
-- Each bullet must contain one distinct idea.
-- Keep every bullet short and clear.
-- Include important names, numbers and announcements.
-- Include important future plans.
-- Do not copy entire sentences from the transcript.
-- Do not repeat the same information.
-- Do not invent any information.
-- Do not write an introduction.
-- Do not write the word "Transcript".
-- Start each point with "-".
-
-Transcript:
-
-${textForAI}`
-        }
-
-      ];
-
-
-      // --------------------------
-      // RUN QWEN
-      // --------------------------
-
-      const result =
-        await analyzer(
-          messages,
-          {
-            max_new_tokens: 220,
-            do_sample: false
-          }
+      const points =
+        extractKeyPoints(
+          transcript,
+          6
         );
 
 
-      console.log(
-        "RAW QWEN RESULT:",
-        result
-      );
-
-
-      // --------------------------
-      // SAFELY READ RESULT
-      // --------------------------
-
-      const finalText =
-        extractQwenAnswer(result);
-
-
-      if (!finalText) {
+      if (!points.length) {
 
         throw new Error(
-          "Qwen generated a response but the website could not read it."
+          "Could not identify enough useful sentences."
         );
 
       }
 
 
-      analysisOutput.value =
-        finalText.trim();
+      keyPointsOutput.value =
+        points
+          .map(point => `• ${point}`)
+          .join("\n\n");
 
 
-      analysisStatus.textContent =
+      keyPointsStatus.textContent =
         "Key points complete.";
 
     }
@@ -506,14 +397,8 @@ ${textForAI}`
 
       console.error(error);
 
-      analysisStatus.textContent =
+      keyPointsStatus.textContent =
         "Error: " + error.message;
-
-    }
-
-    finally {
-
-      analyzeButton.disabled = false;
 
     }
 
@@ -523,94 +408,312 @@ ${textForAI}`
 
 
 // ==========================================
-// READ QWEN OUTPUT SAFELY
+// KEY POINT EXTRACTION
 // ==========================================
 
-function extractQwenAnswer(result) {
+function extractKeyPoints(text, maxPoints = 6) {
 
-  if (!result) {
-    return "";
-  }
-
-
-  // Transformers.js may return
-  // either an array or an object.
-
-  const first =
-    Array.isArray(result)
-      ? result[0]
-      : result;
+  const sentences =
+    splitIntoSentences(text);
 
 
-  if (!first) {
-    return "";
-  }
+  if (sentences.length <= maxPoints) {
 
-
-  const generated =
-    first.generated_text;
-
-
-  // CASE 1:
-  // generated_text is already plain text
-
-  if (typeof generated === "string") {
-
-    return generated;
+    return sentences;
 
   }
 
 
-  // CASE 2:
-  // generated_text is a chat array
+  const stopWords =
+    new Set([
+      "the","a","an","and","or","but","if","then",
+      "to","of","in","on","for","with","at","by",
+      "from","is","are","was","were","be","been",
+      "being","it","its","this","that","these",
+      "those","i","you","he","she","we","they",
+      "them","our","your","their","my","me",
+      "as","so","do","does","did","have","has",
+      "had","will","would","can","could","should",
+      "about","into","than","too","very","just",
+      "also","more","some","any","not","no",
+      "yes","yeah","oh"
+    ]);
 
-  if (Array.isArray(generated)) {
 
-    // Search backwards for assistant reply
+  const wordFrequency = {};
 
-    for (
-      let i = generated.length - 1;
-      i >= 0;
-      i--
-    ) {
 
-      const message =
-        generated[i];
+  for (const sentence of sentences) {
 
+    const words =
+      tokenize(sentence);
+
+
+    for (const word of words) {
 
       if (
-        message &&
-        message.role === "assistant" &&
-        typeof message.content === "string"
+        word.length < 3 ||
+        stopWords.has(word)
       ) {
-
-        return message.content;
-
+        continue;
       }
+
+
+      wordFrequency[word] =
+        (wordFrequency[word] || 0) + 1;
 
     }
 
+  }
 
-    // Fallback:
-    // take last message containing text
 
-    const last =
-      generated[generated.length - 1];
+  const scored =
+    sentences.map(
+      (sentence, index) => {
+
+        const words =
+          tokenize(sentence);
+
+
+        let score = 0;
+
+
+        for (const word of words) {
+
+          if (
+            !stopWords.has(word) &&
+            wordFrequency[word]
+          ) {
+
+            score +=
+              wordFrequency[word];
+
+          }
+
+        }
+
+
+        // Important numbers often matter
+        if (/\d/.test(sentence)) {
+          score += 4;
+        }
+
+
+        // Names / capitalized terms
+        const capitals =
+          sentence.match(
+            /\b[A-Z][a-zA-Z0-9.-]+\b/g
+          );
+
+
+        if (capitals) {
+          score +=
+            Math.min(capitals.length, 4);
+        }
+
+
+        // Announcement / future-plan words
+        if (
+          /\b(launch|release|open|open-source|open sourcing|announce|announced|coming|plan|planning|future|new|latest|model|weights|agent|will|going to)\b/i.test(
+            sentence
+          )
+        ) {
+
+          score += 4;
+
+        }
+
+
+        // Avoid tiny sentences
+        if (words.length < 5) {
+          score -= 5;
+        }
+
+
+        // Avoid extremely long sentences
+        if (words.length > 45) {
+          score -= 2;
+        }
+
+
+        return {
+          sentence,
+          score,
+          index
+        };
+
+      }
+    );
+
+
+  scored.sort(
+    (a, b) =>
+      b.score - a.score
+  );
+
+
+  const selected = [];
+
+
+  for (const candidate of scored) {
+
+    const tooSimilar =
+      selected.some(
+        item =>
+          sentenceSimilarity(
+            item.sentence,
+            candidate.sentence
+          ) > 0.65
+      );
+
+
+    if (!tooSimilar) {
+
+      selected.push(candidate);
+
+    }
 
 
     if (
-      last &&
-      typeof last.content === "string"
+      selected.length >= maxPoints
     ) {
-
-      return last.content;
-
+      break;
     }
 
   }
 
 
-  return "";
+  // Put selected points back into original order
+  selected.sort(
+    (a, b) =>
+      a.index - b.index
+  );
+
+
+  return selected.map(
+    item =>
+      cleanSentence(
+        item.sentence
+      )
+  );
+
+}
+
+
+
+// ==========================================
+// SENTENCE SPLITTING
+// ==========================================
+
+function splitIntoSentences(text) {
+
+  return text
+    .replace(/\s+/g, " ")
+    .trim()
+    .match(
+      /[^.!?]+[.!?]+|[^.!?]+$/g
+    )
+    ?.map(
+      sentence =>
+        sentence.trim()
+    )
+    .filter(
+      sentence =>
+        sentence.length > 20
+    ) || [];
+
+}
+
+
+
+// ==========================================
+// WORD TOKENIZER
+// ==========================================
+
+function tokenize(text) {
+
+  return text
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9'-]/g,
+      " "
+    )
+    .split(/\s+/)
+    .filter(Boolean);
+
+}
+
+
+
+// ==========================================
+// REMOVE DUPLICATE-LIKE POINTS
+// ==========================================
+
+function sentenceSimilarity(
+  sentenceA,
+  sentenceB
+) {
+
+  const wordsA =
+    new Set(
+      tokenize(sentenceA)
+    );
+
+  const wordsB =
+    new Set(
+      tokenize(sentenceB)
+    );
+
+
+  const intersection =
+    [...wordsA].filter(
+      word =>
+        wordsB.has(word)
+    ).length;
+
+
+  const union =
+    new Set([
+      ...wordsA,
+      ...wordsB
+    ]).size;
+
+
+  if (!union) {
+    return 0;
+  }
+
+
+  return intersection / union;
+
+}
+
+
+
+// ==========================================
+// CLEAN SENTENCE
+// ==========================================
+
+function cleanSentence(sentence) {
+
+  let cleaned =
+    sentence
+      .replace(/\s+/g, " ")
+      .trim();
+
+
+  if (
+    cleaned.length > 260
+  ) {
+
+    cleaned =
+      cleaned.slice(0, 257)
+      .trim() + "...";
+
+  }
+
+
+  return cleaned;
 
 }
 
@@ -666,8 +769,7 @@ function getMediaDuration(file) {
       };
 
 
-      media.src =
-        url;
+      media.src = url;
 
     }
   );
