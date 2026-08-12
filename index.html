@@ -1,177 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Student Video AI</title>
+<title>Student Video AI</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 40px auto;
-      padding: 20px;
-      background: #f7f7f7;
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+  background: #f7f7f7;
+}
 
-    .card {
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-    }
+.card {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+}
 
-    h1 {
-      margin-top: 0;
-    }
+h1 { margin-top: 0; }
+h2 { margin-top: 32px; }
 
-    h2 {
-      margin-top: 32px;
-    }
+button {
+  padding: 12px 20px;
+  margin-top: 15px;
+  cursor: pointer;
+  font-size: 16px;
+}
 
-    button {
-      padding: 12px 20px;
-      margin-top: 15px;
-      cursor: pointer;
-      font-size: 16px;
-    }
+input {
+  margin-top: 15px;
+}
 
-    input {
-      margin-top: 15px;
-    }
+.status {
+  margin-top: 18px;
+  font-weight: bold;
+}
 
-    .status {
-      margin-top: 18px;
-      font-weight: bold;
-    }
+textarea {
+  width: 100%;
+  min-height: 210px;
+  margin-top: 15px;
+  padding: 14px;
+  box-sizing: border-box;
+  font-size: 15px;
+  line-height: 1.6;
+}
 
-    textarea {
-      width: 100%;
-      min-height: 210px;
-      margin-top: 15px;
-      padding: 14px;
-      box-sizing: border-box;
-      font-size: 15px;
-      line-height: 1.6;
-    }
+#keyPointsOutput {
+  min-height: 180px;
+}
 
-    #keyPointsOutput {
-      min-height: 180px;
-    }
+.question {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 18px;
+  margin: 20px 0;
+}
 
-    #quizContainer {
-      margin-top: 20px;
-    }
+.question-title {
+  font-weight: bold;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
 
-    .question {
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 18px;
-      margin-bottom: 18px;
-    }
+.answer {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 11px 14px;
+  margin: 8px 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+}
 
-    .question-title {
-      font-weight: bold;
-      margin-bottom: 14px;
-      line-height: 1.5;
-    }
+.answer.correct {
+  border: 2px solid #111;
+  font-weight: bold;
+}
 
-    .answer {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 10px 12px;
-      margin: 8px 0;
-      border: 1px solid #ccc;
-      background: #fff;
-      border-radius: 8px;
-      cursor: pointer;
-    }
+.answer.wrong {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
 
-    .answer:disabled {
-      cursor: default;
-    }
-
-    .correct {
-      border: 2px solid #222;
-      font-weight: bold;
-    }
-
-    .wrong {
-      text-decoration: line-through;
-      opacity: 0.6;
-    }
-
-    .result {
-      margin-top: 12px;
-      font-weight: bold;
-    }
-  </style>
+.result {
+  margin-top: 12px;
+  font-weight: bold;
+}
+</style>
 </head>
 
 <body>
 
 <div class="card">
 
-  <h1>Student Video AI</h1>
+<h1>Student Video AI</h1>
 
-  <p>
-    Upload a lesson video and generate a transcript, key points and revision quiz directly on your device.
-  </p>
+<p>
+Upload a lesson video and generate a transcript,
+key points and revision quiz directly on your device.
+</p>
 
-  <input
-    type="file"
-    id="fileInput"
-    accept="video/*,audio/*"
-  >
+<input
+  type="file"
+  id="fileInput"
+  accept="video/*,audio/*"
+>
 
-  <br>
+<br>
 
-  <button id="transcribeButton" disabled>
-    Generate Transcript
-  </button>
+<button id="transcribeButton" disabled>
+  Generate Transcript
+</button>
 
-  <div id="status" class="status">
-    Select a video.
-  </div>
-
-
-  <h2>Timestamped Transcript</h2>
-
-  <textarea
-    id="transcriptOutput"
-    readonly
-    placeholder="Your transcript will appear here..."
-  ></textarea>
+<div id="status" class="status">
+  Select a video.
+</div>
 
 
-  <button id="keyPointsButton" disabled>
-    Generate Key Points
-  </button>
+<h2>Timestamped Transcript</h2>
 
-  <div id="keyPointsStatus" class="status"></div>
-
-
-  <h2>Key Points</h2>
-
-  <textarea
-    id="keyPointsOutput"
-    readonly
-    placeholder="Your key points will appear here..."
-  ></textarea>
+<textarea
+  id="transcriptOutput"
+  readonly
+  placeholder="Your transcript will appear here..."
+></textarea>
 
 
-  <button id="quizButton" disabled>
-    Generate Quiz
-  </button>
+<button id="keyPointsButton" disabled>
+  Generate Key Points
+</button>
 
-  <div id="quizStatus" class="status"></div>
+<div
+  id="keyPointsStatus"
+  class="status">
+</div>
 
 
-  <h2>Revision Quiz</h2>
+<h2>Key Points</h2>
 
-  <div id="quizContainer"></div>
+<textarea
+  id="keyPointsOutput"
+  readonly
+  placeholder="Your key points will appear here..."
+></textarea>
+
+
+<button id="quizButton" disabled>
+  Generate Quiz
+</button>
+
+<div
+  id="quizStatus"
+  class="status">
+</div>
+
+
+<h2>Revision Quiz</h2>
+
+<div id="quizContainer"></div>
 
 </div>
 
@@ -222,49 +216,28 @@ const MAX_DURATION =
 
 
 let selectedFile = null;
-
 let transcriber = null;
 
 let rawTranscript = "";
-
 let currentKeyPoints = [];
 
 
 
-// ==========================================
+// =====================================
 // SELECT FILE
-// ==========================================
+// =====================================
 
 fileInput.addEventListener(
   "change",
   async () => {
 
-    transcriptOutput.value = "";
-    keyPointsOutput.value = "";
-
-    quizContainer.innerHTML = "";
-
-    rawTranscript = "";
-    currentKeyPoints = [];
-
-    transcribeButton.disabled = true;
-    keyPointsButton.disabled = true;
-    quizButton.disabled = true;
-
-    selectedFile = null;
-
+    resetResults();
 
     const file =
       fileInput.files[0];
 
-
     if (!file) {
-
-      status.textContent =
-        "Select a video.";
-
       return;
-
     }
 
 
@@ -274,7 +247,6 @@ fileInput.addEventListener(
         "Video too large. Maximum size is 100 MB.";
 
       return;
-
     }
 
 
@@ -294,18 +266,16 @@ fileInput.addEventListener(
           "Video too long. Maximum duration is 10 minutes.";
 
         return;
-
       }
 
 
       selectedFile = file;
 
-
       status.textContent =
         `Ready — ${Math.round(duration)} seconds`;
 
-
-      transcribeButton.disabled = false;
+      transcribeButton.disabled =
+        false;
 
     }
 
@@ -315,7 +285,6 @@ fileInput.addEventListener(
 
       status.textContent =
         "Could not read this video.";
-
     }
 
   }
@@ -323,9 +292,36 @@ fileInput.addEventListener(
 
 
 
-// ==========================================
+// =====================================
+// RESET
+// =====================================
+
+function resetResults() {
+
+  selectedFile = null;
+
+  rawTranscript = "";
+  currentKeyPoints = [];
+
+  transcriptOutput.value = "";
+  keyPointsOutput.value = "";
+
+  quizContainer.innerHTML = "";
+
+  keyPointsStatus.textContent = "";
+  quizStatus.textContent = "";
+
+  transcribeButton.disabled = true;
+  keyPointsButton.disabled = true;
+  quizButton.disabled = true;
+
+}
+
+
+
+// =====================================
 // TRANSCRIBE
-// ==========================================
+// =====================================
 
 transcribeButton.addEventListener(
   "click",
@@ -345,9 +341,6 @@ transcribeButton.addEventListener(
 
     rawTranscript = "";
     currentKeyPoints = [];
-
-    keyPointsStatus.textContent = "";
-    quizStatus.textContent = "";
 
 
     try {
@@ -383,13 +376,11 @@ transcribeButton.addEventListener(
 
                 status.textContent =
                   `Loading Whisper: ${Math.round(data.progress)}%`;
-
               }
 
             }
           }
         );
-
       }
 
 
@@ -417,7 +408,6 @@ transcribeButton.addEventListener(
         throw new Error(
           "Whisper returned an empty transcript."
         );
-
       }
 
 
@@ -431,7 +421,8 @@ transcribeButton.addEventListener(
         "Transcript complete.";
 
 
-      keyPointsButton.disabled = false;
+      keyPointsButton.disabled =
+        false;
 
     }
 
@@ -446,8 +437,8 @@ transcribeButton.addEventListener(
 
     finally {
 
-      transcribeButton.disabled = false;
-
+      transcribeButton.disabled =
+        false;
     }
 
   }
@@ -455,11 +446,13 @@ transcribeButton.addEventListener(
 
 
 
-// ==========================================
-// TIMESTAMPED TRANSCRIPT
-// ==========================================
+// =====================================
+// TIMESTAMPS
+// =====================================
 
-function formatTimestampedTranscript(result) {
+function formatTimestampedTranscript(
+  result
+) {
 
   if (
     !result.chunks ||
@@ -467,7 +460,6 @@ function formatTimestampedTranscript(result) {
   ) {
 
     return result.text || "";
-
   }
 
 
@@ -484,20 +476,15 @@ function formatTimestampedTranscript(result) {
       const startText =
         formatTime(start);
 
-
       const endText =
         typeof end === "number"
           ? formatTime(end)
           : "--:--";
 
 
-      const text =
-        chunk.text?.trim() || "";
-
-
       return (
         `[${startText} - ${endText}]\n` +
-        text
+        `${chunk.text?.trim() || ""}`
       );
 
     })
@@ -515,10 +502,8 @@ function formatTime(seconds) {
       Math.floor(seconds)
     );
 
-
   const minutes =
     Math.floor(total / 60);
-
 
   const secs =
     total % 60;
@@ -534,9 +519,9 @@ function formatTime(seconds) {
 
 
 
-// ==========================================
+// =====================================
 // KEY POINTS
-// ==========================================
+// =====================================
 
 keyPointsButton.addEventListener(
   "click",
@@ -545,26 +530,17 @@ keyPointsButton.addEventListener(
     if (!rawTranscript) return;
 
 
-    keyPointsStatus.textContent =
-      "Finding important points...";
-
-
     try {
+
+      keyPointsStatus.textContent =
+        "Finding important points...";
+
 
       currentKeyPoints =
         extractKeyPoints(
           rawTranscript,
           6
         );
-
-
-      if (!currentKeyPoints.length) {
-
-        throw new Error(
-          "Could not find useful key points."
-        );
-
-      }
 
 
       keyPointsOutput.value =
@@ -579,7 +555,8 @@ keyPointsButton.addEventListener(
         "Key points complete.";
 
 
-      quizButton.disabled = false;
+      quizButton.disabled =
+        currentKeyPoints.length === 0;
 
     }
 
@@ -589,7 +566,6 @@ keyPointsButton.addEventListener(
 
       keyPointsStatus.textContent =
         "Error: " + error.message;
-
     }
 
   }
@@ -597,566 +573,35 @@ keyPointsButton.addEventListener(
 
 
 
-// ==========================================
-// QUIZ
-// ==========================================
-
-quizButton.addEventListener(
-  "click",
-  () => {
-
-    quizContainer.innerHTML = "";
-
-    quizStatus.textContent =
-      "Generating revision questions...";
-
-
-    try {
-
-      const questions =
-        generateQuiz(
-          rawTranscript,
-          currentKeyPoints,
-          5
-        );
-
-
-      if (!questions.length) {
-
-        throw new Error(
-          "Not enough useful information to create a quiz."
-        );
-
-      }
-
-
-      renderQuiz(
-        questions
-      );
-
-
-      quizStatus.textContent =
-        `${questions.length} questions ready.`;
-
-    }
-
-    catch (error) {
-
-      console.error(error);
-
-      quizStatus.textContent =
-        "Error: " + error.message;
-
-    }
-
-  }
-);
-
-
-
-// ==========================================
-// GENERATE MCQ QUESTIONS
-// ==========================================
-
-function generateQuiz(
-  transcript,
-  keyPoints,
-  maxQuestions = 5
-) {
-
-  const terms =
-    extractImportantTerms(
-      transcript
-    );
-
-
-  const questions = [];
-
-
-  for (const point of keyPoints) {
-
-    const matchingTerms =
-      terms.filter(term =>
-        point
-          .toLowerCase()
-          .includes(
-            term.toLowerCase()
-          )
-      );
-
-
-    if (!matchingTerms.length) {
-      continue;
-    }
-
-
-    /*
-      Prefer numbers and named terms.
-    */
-
-    matchingTerms.sort(
-      (a, b) =>
-        termImportance(b) -
-        termImportance(a)
-    );
-
-
-    const correct =
-      matchingTerms[0];
-
-
-    if (
-      !correct ||
-      correct.length < 2
-    ) {
-      continue;
-    }
-
-
-    const questionText =
-      replaceFirstInsensitive(
-        point,
-        correct,
-        "________"
-      );
-
-
-    if (
-      questionText === point
-    ) {
-      continue;
-    }
-
-
-    const distractorPool =
-      terms.filter(term =>
-        term.toLowerCase() !==
-        correct.toLowerCase()
-      );
-
-
-    const distractors =
-      chooseDistractors(
-        correct,
-        distractorPool,
-        3
-      );
-
-
-    if (
-      distractors.length < 3
-    ) {
-      continue;
-    }
-
-
-    const answers =
-      shuffle([
-        correct,
-        ...distractors
-      ]);
-
-
-    questions.push({
-      question:
-        `Complete the statement:\n${questionText}`,
-      correct,
-      answers
-    });
-
-
-    if (
-      questions.length >=
-      maxQuestions
-    ) {
-      break;
-    }
-
-  }
-
-
-  return questions;
-
-}
-
-
-
-// ==========================================
-// IMPORTANT TERMS
-// ==========================================
-
-function extractImportantTerms(text) {
-
-  const results =
-    new Set();
-
-
-  /*
-    Numbers:
-    30
-    24-7
-    1.2
-    2026
-  */
-
-  const numbers =
-    text.match(
-      /\b\d+(?:\.\d+)?(?:-\d+)?\b/g
-    ) || [];
-
-
-  for (const number of numbers) {
-
-    results.add(number);
-
-  }
-
-
-  /*
-    Capitalized names / phrases.
-
-    Examples:
-    Muse Glimmer
-    Muse Spark
-    Meta AI
-  */
-
-  const names =
-    text.match(
-      /\b(?:[A-Z][A-Za-z0-9.-]*)(?:\s+[A-Z][A-Za-z0-9.-]*){0,3}\b/g
-    ) || [];
-
-
-  for (let name of names) {
-
-    name =
-      name.trim();
-
-
-    if (
-      name.length >= 3 &&
-      ![
-        "The",
-        "This",
-        "That",
-        "You",
-        "We",
-        "They",
-        "It",
-        "In",
-        "And",
-        "But"
-      ].includes(name)
-    ) {
-
-      results.add(name);
-
-    }
-
-  }
-
-
-  return [...results];
-
-}
-
-
-
-// ==========================================
-// TERM IMPORTANCE
-// ==========================================
-
-function termImportance(term) {
-
-  let score = 0;
-
-
-  if (
-    /\d/.test(term)
-  ) {
-
-    score += 5;
-
-  }
-
-
-  if (
-    term.includes(" ")
-  ) {
-
-    score += 4;
-
-  }
-
-
-  if (
-    /^[A-Z]/.test(term)
-  ) {
-
-    score += 3;
-
-  }
-
-
-  score +=
-    Math.min(
-      term.length / 10,
-      3
-    );
-
-
-  return score;
-
-}
-
-
-
-// ==========================================
-// DISTRACTORS
-// ==========================================
-
-function chooseDistractors(
-  correct,
-  pool,
-  count
-) {
-
-  const correctIsNumber =
-    /^\d/.test(correct);
-
-
-  let candidates =
-    pool.filter(item => {
-
-      const itemIsNumber =
-        /^\d/.test(item);
-
-
-      /*
-        If answer is a number,
-        prefer number distractors.
-      */
-
-      if (correctIsNumber) {
-
-        return itemIsNumber;
-
-      }
-
-
-      /*
-        Named answers should preferably
-        use other named answers.
-      */
-
-      return !itemIsNumber;
-
-    });
-
-
-  /*
-    If there aren't enough matching
-    distractors, use the full pool.
-  */
-
-  if (
-    candidates.length < count
-  ) {
-
-    candidates =
-      pool.slice();
-
-  }
-
-
-  candidates =
-    shuffle(
-      [...new Set(candidates)]
-    );
-
-
-  return candidates
-    .slice(0, count);
-
-}
-
-
-
-// ==========================================
-// DISPLAY QUIZ
-// ==========================================
-
-function renderQuiz(questions) {
-
-  questions.forEach(
-    (question, index) => {
-
-      const box =
-        document.createElement("div");
-
-
-      box.className =
-        "question";
-
-
-      const title =
-        document.createElement("div");
-
-
-      title.className =
-        "question-title";
-
-
-      title.textContent =
-        `Question ${index + 1}: ${question.question}`;
-
-
-      box.appendChild(
-        title
-      );
-
-
-      const resultBox =
-        document.createElement("div");
-
-
-      resultBox.className =
-        "result";
-
-
-      question.answers.forEach(
-        answer => {
-
-          const button =
-            document.createElement("button");
-
-
-          button.className =
-            "answer";
-
-
-          button.textContent =
-            answer;
-
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              const buttons =
-                box.querySelectorAll(
-                  ".answer"
-                );
-
-
-              buttons.forEach(
-                item => {
-
-                  item.disabled = true;
-
-
-                  if (
-                    item.textContent ===
-                    question.correct
-                  ) {
-
-                    item.classList.add(
-                      "correct"
-                    );
-
-                  }
-
-                }
-              );
-
-
-              if (
-                answer ===
-                question.correct
-              ) {
-
-                resultBox.textContent =
-                  "Correct.";
-
-              }
-
-              else {
-
-                button.classList.add(
-                  "wrong"
-                );
-
-
-                resultBox.textContent =
-                  `Correct answer: ${question.correct}`;
-
-              }
-
-            }
-          );
-
-
-          box.appendChild(
-            button
-          );
-
-        }
-      );
-
-
-      box.appendChild(
-        resultBox
-      );
-
-
-      quizContainer.appendChild(
-        box
-      );
-
-    }
-  );
-
-}
-
-
-
-// ==========================================
+// =====================================
 // KEY POINT EXTRACTION
-// ==========================================
+// =====================================
 
 function extractKeyPoints(
   text,
   maxPoints = 6
 ) {
 
-  let sentences =
-    splitIntoSentences(text);
-
-
   let candidates = [];
 
 
-  for (const sentence of sentences) {
+  for (
+    const sentence of
+    splitIntoSentences(text)
+  ) {
 
     candidates.push(
       ...splitLongSentence(sentence)
     );
-
   }
 
 
   candidates =
     candidates
       .map(cleanCandidate)
-      .filter(Boolean)
       .filter(item =>
         item.length >= 25
       );
-
-
-  if (!candidates.length) {
-    return [];
-  }
 
 
   const stopWords =
@@ -1171,23 +616,20 @@ function extractKeyPoints(
       "our","your","their","my","me",
       "as","so","do","does","did",
       "have","has","had","can","could",
-      "should","would","about","into",
-      "than","too","very","just","also",
-      "some","any","more","not","no",
-      "yes","yeah","oh","um","uh",
-      "well","really","basically",
-      "actually"
+      "would","should","very","just",
+      "also","more","some","yeah","oh",
+      "um","uh","well","actually"
     ]);
 
 
   const frequency = {};
 
 
-  for (const candidate of candidates) {
+  for (const sentence of candidates) {
 
     for (
       const word of
-      tokenize(candidate)
+      tokenize(sentence)
     ) {
 
       if (
@@ -1200,19 +642,16 @@ function extractKeyPoints(
 
       frequency[word] =
         (frequency[word] || 0) + 1;
-
     }
-
   }
 
 
   const scored =
     candidates.map(
-      (candidate, index) => {
+      (sentence, index) => {
 
         const words =
-          tokenize(candidate);
-
+          tokenize(sentence);
 
         let score = 0;
 
@@ -1224,11 +663,8 @@ function extractKeyPoints(
             frequency[word]
           ) {
 
-            score +=
-              frequency[word];
-
+            score += frequency[word];
           }
-
         }
 
 
@@ -1241,40 +677,18 @@ function extractKeyPoints(
           );
 
 
-        if (
-          /\d/.test(candidate)
-        ) {
-
+        if (/\d/.test(sentence)) {
           score += 5;
-
-        }
-
-
-        const caps =
-          candidate.match(
-            /\b[A-Z][A-Za-z0-9.-]+\b/g
-          );
-
-
-        if (caps) {
-
-          score +=
-            Math.min(
-              caps.length * 1.3,
-              5
-            );
-
         }
 
 
         if (
-          /\b(important|key|main|new|announce|announced|launch|launched|release|released|open-source|open sourcing|model|weights|study|research|result|found|shows|means|because|therefore|cause|effect|risk|benefit|increase|decrease|future|coming|plan|planning|agent|available|first|largest|highest|latest)\b/i.test(
-            candidate
+          /\b(new|model|weights|release|launch|open-source|open sourcing|study|research|result|future|coming|agent|available|latest|highest|first)\b/i.test(
+            sentence
           )
         ) {
 
           score += 5;
-
         }
 
 
@@ -1283,17 +697,13 @@ function extractKeyPoints(
         }
 
 
-        if (
-          /\?$/.test(candidate)
-        ) {
-
+        if (sentence.endsWith("?")) {
           score -= 8;
-
         }
 
 
         return {
-          text: candidate,
+          text: sentence,
           score,
           index
         };
@@ -1314,21 +724,17 @@ function extractKeyPoints(
   for (const candidate of scored) {
 
     const duplicate =
-      selected.some(
-        existing =>
-          similarity(
-            existing.text,
-            candidate.text
-          ) > 0.58
+      selected.some(item =>
+        similarity(
+          item.text,
+          candidate.text
+        ) > 0.58
       );
 
 
     if (!duplicate) {
 
-      selected.push(
-        candidate
-      );
-
+      selected.push(candidate);
     }
 
 
@@ -1338,7 +744,6 @@ function extractKeyPoints(
     ) {
       break;
     }
-
   }
 
 
@@ -1348,21 +753,741 @@ function extractKeyPoints(
   );
 
 
-  return selected
-    .map(item =>
+  return selected.map(
+    item =>
       makeConcisePoint(
         item.text
       )
-    )
-    .filter(Boolean);
+  );
 
 }
 
 
 
-// ==========================================
-// SENTENCE SPLITTING
-// ==========================================
+// =====================================
+// QUIZ
+// =====================================
+
+quizButton.addEventListener(
+  "click",
+  () => {
+
+    quizContainer.innerHTML = "";
+
+
+    try {
+
+      quizStatus.textContent =
+        "Generating quiz...";
+
+
+      const questions =
+        generateQuiz(
+          rawTranscript,
+          currentKeyPoints,
+          5
+        );
+
+
+      if (!questions.length) {
+
+        throw new Error(
+          "Not enough useful facts to create a quiz."
+        );
+      }
+
+
+      renderQuiz(questions);
+
+
+      quizStatus.textContent =
+        `${questions.length} questions ready.`;
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      quizStatus.textContent =
+        "Error: " + error.message;
+    }
+
+  }
+);
+
+
+
+// =====================================
+// BETTER QUIZ GENERATOR
+// =====================================
+
+function generateQuiz(
+  transcript,
+  points,
+  maxQuestions
+) {
+
+  const terms =
+    extractTerms(transcript);
+
+
+  const usedAnswers =
+    new Set();
+
+  const questions = [];
+
+
+  for (const point of points) {
+
+    const matching =
+      terms.filter(term =>
+        point.toLowerCase().includes(
+          term.value.toLowerCase()
+        )
+      );
+
+
+    matching.sort(
+      (a, b) =>
+        termScore(b) -
+        termScore(a)
+    );
+
+
+    for (const term of matching) {
+
+      const key =
+        term.value.toLowerCase();
+
+
+      if (
+        usedAnswers.has(key)
+      ) {
+        continue;
+      }
+
+
+      let distractors = [];
+
+
+      if (term.type === "number") {
+
+        /*
+          Don't create awkward questions
+          from values such as 24-7.
+        */
+
+        if (
+          !/^\d+(?:\.\d+)?$/.test(
+            term.value
+          )
+        ) {
+          continue;
+        }
+
+
+        distractors =
+          createNumberDistractors(
+            term.value
+          );
+
+      }
+
+      else {
+
+        distractors =
+          terms
+            .filter(other =>
+              other.type === "name" &&
+              other.value.toLowerCase() !==
+                key
+            )
+            .map(item =>
+              item.value
+            );
+
+
+        distractors =
+          unique(
+            distractors
+          )
+          .filter(value =>
+            !tooSimilarTerms(
+              value,
+              term.value
+            )
+          )
+          .slice(0, 3);
+
+
+        /*
+          3-answer questions are okay.
+          Don't invent fake names just
+          to reach four choices.
+        */
+
+        if (
+          distractors.length < 2
+        ) {
+          continue;
+        }
+      }
+
+
+      const blanked =
+        replaceFirstInsensitive(
+          point,
+          term.value,
+          "________"
+        );
+
+
+      if (
+        blanked === point
+      ) {
+        continue;
+      }
+
+
+      const options =
+        shuffle([
+          term.value,
+          ...distractors
+        ]);
+
+
+      questions.push({
+
+        question:
+          createQuestionText(
+            blanked,
+            term
+          ),
+
+        correct:
+          term.value,
+
+        options
+      });
+
+
+      usedAnswers.add(key);
+
+      break;
+    }
+
+
+    if (
+      questions.length >=
+      maxQuestions
+    ) {
+      break;
+    }
+  }
+
+
+  return questions;
+
+}
+
+
+
+// =====================================
+// QUESTION TEXT
+// =====================================
+
+function createQuestionText(
+  blanked,
+  term
+) {
+
+  if (
+    term.type === "number"
+  ) {
+
+    return (
+      "Which number correctly completes this statement?\n\n" +
+      blanked
+    );
+  }
+
+
+  return (
+    "Which name or term correctly completes this statement?\n\n" +
+    blanked
+  );
+
+}
+
+
+
+// =====================================
+// EXTRACT QUIZ TERMS
+// =====================================
+
+function extractTerms(text) {
+
+  const terms = [];
+
+  const seen =
+    new Set();
+
+
+  function addTerm(
+    value,
+    type
+  ) {
+
+    value =
+      value
+        .replace(/[.,!?;:]+$/g, "")
+        .trim();
+
+
+    if (
+      value.length < 2
+    ) {
+      return;
+    }
+
+
+    const key =
+      `${type}:${value.toLowerCase()}`;
+
+
+    if (
+      seen.has(key)
+    ) {
+      return;
+    }
+
+
+    seen.add(key);
+
+
+    terms.push({
+      value,
+      type
+    });
+  }
+
+
+  // -----------------------------
+  // NUMBERS
+  // -----------------------------
+
+  const numbers =
+    text.match(
+      /\b\d+(?:\.\d+)?(?:-\d+)?\b/g
+    ) || [];
+
+
+  for (
+    const number of numbers
+  ) {
+
+    addTerm(
+      number,
+      "number"
+    );
+  }
+
+
+  // -----------------------------
+  // NAMES
+  // -----------------------------
+
+  const ignore =
+    new Set([
+      "The","This","That","These",
+      "Those","We","We're","I",
+      "I'm","You","It","It's",
+      "They","And","But","So",
+      "In","On","At","For","From"
+    ]);
+
+
+  const sentences =
+    splitIntoSentences(text);
+
+
+  for (
+    const sentence of sentences
+  ) {
+
+    /*
+      Examples detected:
+
+      Muse Glimmer
+      Muse Spark 1.2
+      Meta AI
+      USA
+
+      Importantly this cannot cross
+      punctuation into "Muse Glimmer. It".
+    */
+
+    const matches =
+      sentence.match(
+        /\b[A-Z][A-Za-z0-9-]*(?:\s+(?:[A-Z][A-Za-z0-9-]*|\d+(?:\.\d+)?)){0,3}\b/g
+      ) || [];
+
+
+    for (
+      let name of matches
+    ) {
+
+      name =
+        name.trim();
+
+
+      if (
+        ignore.has(name)
+      ) {
+        continue;
+      }
+
+
+      /*
+        Ignore most ordinary
+        single sentence-start words.
+      */
+
+      if (
+        !name.includes(" ") &&
+        name.length < 4 &&
+        !/^[A-Z]{2,}$/.test(name)
+      ) {
+        continue;
+      }
+
+
+      addTerm(
+        name,
+        "name"
+      );
+    }
+  }
+
+
+  return terms;
+
+}
+
+
+
+// =====================================
+// TERM IMPORTANCE
+// =====================================
+
+function termScore(term) {
+
+  let score = 0;
+
+
+  if (
+    term.type === "number"
+  ) {
+    score += 6;
+  }
+
+
+  if (
+    term.value.includes(" ")
+  ) {
+    score += 5;
+  }
+
+
+  if (
+    /^[A-Z]{2,}/.test(
+      term.value
+    )
+  ) {
+    score += 3;
+  }
+
+
+  score +=
+    Math.min(
+      term.value.length / 10,
+      3
+    );
+
+
+  return score;
+
+}
+
+
+
+// =====================================
+// NUMBER DISTRACTORS
+// =====================================
+
+function createNumberDistractors(
+  value
+) {
+
+  const number =
+    Number(value);
+
+
+  if (
+    !Number.isFinite(number)
+  ) {
+
+    return [];
+  }
+
+
+  let candidates = [];
+
+
+  // Year-like value
+
+  if (
+    Number.isInteger(number) &&
+    number >= 1900 &&
+    number <= 2100
+  ) {
+
+    candidates = [
+      number - 1,
+      number + 1,
+      number + 2
+    ];
+  }
+
+
+  // Decimal: 1.2 → 1.0 / 1.1 / 1.3
+
+  else if (
+    value.includes(".")
+  ) {
+
+    const decimals =
+      value.split(".")[1].length;
+
+    const step =
+      1 / Math.pow(
+        10,
+        decimals
+      );
+
+
+    candidates = [
+      number - (step * 2),
+      number - step,
+      number + step,
+      number + (step * 2)
+    ]
+      .filter(item =>
+        item > 0
+      )
+      .slice(0, 3)
+      .map(item =>
+        item.toFixed(decimals)
+      );
+
+
+    return candidates;
+  }
+
+
+  // Normal numbers
+
+  else {
+
+    let step;
+
+
+    if (number <= 10) {
+      step = 1;
+    }
+
+    else if (number <= 50) {
+      step = 5;
+    }
+
+    else if (number <= 200) {
+      step = 10;
+    }
+
+    else {
+      step =
+        Math.max(
+          10,
+          Math.round(
+            number * 0.1
+          )
+        );
+    }
+
+
+    candidates = [
+      number - (step * 2),
+      number - step,
+      number + step,
+      number + (step * 2)
+    ]
+      .filter(item =>
+        item > 0 &&
+        item !== number
+      )
+      .slice(0, 3);
+  }
+
+
+  return candidates.map(
+    item =>
+      String(item)
+  );
+
+}
+
+
+
+// =====================================
+// RENDER QUIZ
+// =====================================
+
+function renderQuiz(
+  questions
+) {
+
+  questions.forEach(
+    (question, index) => {
+
+      const box =
+        document.createElement(
+          "div"
+        );
+
+
+      box.className =
+        "question";
+
+
+      const title =
+        document.createElement(
+          "div"
+        );
+
+
+      title.className =
+        "question-title";
+
+
+      title.textContent =
+        `Question ${index + 1}: ${question.question}`;
+
+
+      box.appendChild(title);
+
+
+      const result =
+        document.createElement(
+          "div"
+        );
+
+
+      result.className =
+        "result";
+
+
+      question.options.forEach(
+        option => {
+
+          const button =
+            document.createElement(
+              "button"
+            );
+
+
+          button.className =
+            "answer";
+
+
+          button.textContent =
+            option;
+
+
+          button.onclick = () => {
+
+            const buttons =
+              box.querySelectorAll(
+                ".answer"
+              );
+
+
+            buttons.forEach(
+              item => {
+
+                item.disabled = true;
+
+
+                if (
+                  item.textContent ===
+                  question.correct
+                ) {
+
+                  item.classList.add(
+                    "correct"
+                  );
+                }
+
+              }
+            );
+
+
+            if (
+              option ===
+              question.correct
+            ) {
+
+              result.textContent =
+                "Correct.";
+            }
+
+            else {
+
+              button.classList.add(
+                "wrong"
+              );
+
+
+              result.textContent =
+                `Correct answer: ${question.correct}`;
+            }
+
+          };
+
+
+          box.appendChild(button);
+
+        }
+      );
+
+
+      box.appendChild(result);
+
+
+      quizContainer.appendChild(
+        box
+      );
+
+    }
+  );
+
+}
+
+
+
+// =====================================
+// TEXT HELPERS
+// =====================================
 
 function splitIntoSentences(text) {
 
@@ -1373,7 +1498,7 @@ function splitIntoSentences(text) {
 
 
   if (
-    typeof Intl !== "undefined" &&
+    Intl &&
     Intl.Segmenter
   ) {
 
@@ -1389,98 +1514,75 @@ function splitIntoSentences(text) {
         );
 
 
-      const segments =
-        [...segmenter.segment(
+      return [
+        ...segmenter.segment(
           normalized
-        )]
-          .map(item =>
-            item.segment.trim()
-          )
-          .filter(item =>
-            item.length > 15
-          );
-
-
-      if (segments.length) {
-
-        return segments;
-
-      }
+        )
+      ]
+        .map(item =>
+          item.segment.trim()
+        )
+        .filter(item =>
+          item.length > 15
+        );
 
     }
 
-    catch (error) {
-
-      console.warn(error);
-
-    }
-
+    catch {}
   }
 
 
   const protectedText =
     normalized.replace(
       /(\d)\.(\d)/g,
-      "$1__DECIMAL_DOT__$2"
+      "$1__DOT__$2"
     );
 
 
-  return protectedText
-    .match(
+  return (
+    protectedText.match(
       /[^.!?]+[.!?]+|[^.!?]+$/g
-    )
-    ?.map(sentence =>
-      sentence
+    ) || []
+  )
+    .map(item =>
+      item
         .replace(
-          /__DECIMAL_DOT__/g,
+          /__DOT__/g,
           "."
         )
         .trim()
-    )
-    .filter(sentence =>
-      sentence.length > 15
-    ) || [];
+    );
 
 }
 
 
 
-// ==========================================
-// LONG SENTENCES
-// ==========================================
-
-function splitLongSentence(sentence) {
+function splitLongSentence(
+  sentence
+) {
 
   if (
     sentence.length < 210
   ) {
 
     return [sentence];
-
   }
 
 
-  const parts =
-    sentence.split(
+  return sentence
+    .split(
       /;\s+|,\s+(?=(?:and|but|while|because|so)\s+)/i
-    );
-
-
-  return parts
-    .map(part =>
-      part.trim()
     )
-    .filter(part =>
-      part.length > 25
+    .map(item =>
+      item.trim()
+    )
+    .filter(item =>
+      item.length > 25
     );
 
 }
 
 
-
-// ==========================================
-// CLEAN TEXT
-// ==========================================
 
 function cleanCandidate(text) {
 
@@ -1519,7 +1621,6 @@ function makeConcisePoint(text) {
         .slice(0, 210)
         .trim() +
       "...";
-
   }
 
 
@@ -1531,10 +1632,6 @@ function makeConcisePoint(text) {
 }
 
 
-
-// ==========================================
-// HELPERS
-// ==========================================
 
 function tokenize(text) {
 
@@ -1558,17 +1655,16 @@ function similarity(a, b) {
       tokenize(a)
     );
 
-
   const B =
     new Set(
       tokenize(b)
     );
 
 
-  const intersection =
+  const common =
     [...A]
-      .filter(word =>
-        B.has(word)
+      .filter(item =>
+        B.has(item)
       )
       .length;
 
@@ -1581,8 +1677,30 @@ function similarity(a, b) {
 
 
   return union
-    ? intersection / union
+    ? common / union
     : 0;
+
+}
+
+
+
+function tooSimilarTerms(
+  a,
+  b
+) {
+
+  const A =
+    a.toLowerCase();
+
+  const B =
+    b.toLowerCase();
+
+
+  return (
+    A === B ||
+    A.includes(B) ||
+    B.includes(A)
+  );
 
 }
 
@@ -1613,6 +1731,16 @@ function replaceFirstInsensitive(
 
 
 
+function unique(array) {
+
+  return [
+    ...new Set(array)
+  ];
+
+}
+
+
+
 function shuffle(array) {
 
   const result =
@@ -1622,9 +1750,7 @@ function shuffle(array) {
   for (
     let i =
       result.length - 1;
-
     i > 0;
-
     i--
   ) {
 
@@ -1643,7 +1769,6 @@ function shuffle(array) {
       result[j],
       result[i]
     ];
-
   }
 
 
@@ -1653,9 +1778,9 @@ function shuffle(array) {
 
 
 
-// ==========================================
+// =====================================
 // MEDIA
-// ==========================================
+// =====================================
 
 function getMediaDuration(file) {
 
@@ -1684,29 +1809,21 @@ function getMediaDuration(file) {
           media.duration;
 
 
-        URL.revokeObjectURL(
-          url
-        );
-
+        URL.revokeObjectURL(url);
 
         resolve(duration);
-
       };
 
 
       media.onerror = () => {
 
-        URL.revokeObjectURL(
-          url
-        );
-
+        URL.revokeObjectURL(url);
 
         reject(
           new Error(
             "Unsupported media file."
           )
         );
-
       };
 
 
@@ -1719,11 +1836,13 @@ function getMediaDuration(file) {
 
 
 
-// ==========================================
-// AUDIO FOR WHISPER
-// ==========================================
+// =====================================
+// AUDIO → WHISPER
+// =====================================
 
-async function convertToWhisperAudio(file) {
+async function convertToWhisperAudio(
+  file
+) {
 
   const arrayBuffer =
     await file.arrayBuffer();
@@ -1745,7 +1864,7 @@ async function convertToWhisperAudio(file) {
 
   }
 
-  catch (error) {
+  catch {
 
     await audioContext.close();
 
@@ -1753,7 +1872,6 @@ async function convertToWhisperAudio(file) {
     throw new Error(
       "Your browser could not extract audio from this video."
     );
-
   }
 
 
