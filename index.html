@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>Student Video AI</title>
 
@@ -48,12 +48,12 @@
 
     textarea {
       width: 100%;
-      min-height: 190px;
+      min-height: 220px;
       margin-top: 15px;
-      padding: 12px;
+      padding: 14px;
       box-sizing: border-box;
       font-size: 15px;
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
     #keyPointsOutput {
@@ -69,14 +69,14 @@
   <h1>Student Video AI</h1>
 
   <p>
-    Upload a lesson video and generate a transcript and key points directly on your device.
+    Upload a lesson video and generate a timestamped transcript and key points directly on your device.
   </p>
 
   <input
     type="file"
     id="fileInput"
     accept="video/*,audio/*"
-  />
+  >
 
   <br>
 
@@ -89,7 +89,7 @@
   </div>
 
 
-  <h2>Transcript</h2>
+  <h2>Timestamped Transcript</h2>
 
   <textarea
     id="transcriptOutput"
@@ -155,6 +155,14 @@ const MAX_DURATION =
 let selectedFile = null;
 let transcriber = null;
 
+/*
+  Keep a clean transcript separately.
+
+  The user sees the timestamped version,
+  but key-point extraction uses this clean text.
+*/
+let rawTranscript = "";
+
 
 
 // ==========================================
@@ -166,16 +174,25 @@ fileInput.addEventListener("change", async () => {
   transcriptOutput.value = "";
   keyPointsOutput.value = "";
 
+  rawTranscript = "";
+
   transcribeButton.disabled = true;
   keyPointsButton.disabled = true;
 
   selectedFile = null;
 
-  const file = fileInput.files[0];
+
+  const file =
+    fileInput.files[0];
+
 
   if (!file) {
-    status.textContent = "Select a video.";
+
+    status.textContent =
+      "Select a video.";
+
     return;
+
   }
 
 
@@ -185,6 +202,7 @@ fileInput.addEventListener("change", async () => {
       "Video too large. Maximum size is 100 MB.";
 
     return;
+
   }
 
 
@@ -204,13 +222,16 @@ fileInput.addEventListener("change", async () => {
         "Video too long. Maximum duration is 10 minutes.";
 
       return;
+
     }
 
 
     selectedFile = file;
 
+
     status.textContent =
       `Ready — ${Math.round(duration)} seconds`;
+
 
     transcribeButton.disabled = false;
 
@@ -230,7 +251,7 @@ fileInput.addEventListener("change", async () => {
 
 
 // ==========================================
-// TRANSCRIBE
+// TRANSCRIBE WITH WHISPER
 // ==========================================
 
 transcribeButton.addEventListener(
@@ -245,6 +266,8 @@ transcribeButton.addEventListener(
 
     transcriptOutput.value = "";
     keyPointsOutput.value = "";
+
+    rawTranscript = "";
 
     keyPointsStatus.textContent = "";
 
@@ -301,16 +324,19 @@ transcribeButton.addEventListener(
           audio,
           {
             chunk_length_s: 30,
-            stride_length_s: 5
+            stride_length_s: 5,
+
+            // NEW:
+            return_timestamps: true
           }
         );
 
 
-      const transcript =
+      rawTranscript =
         result.text?.trim() || "";
 
 
-      if (!transcript) {
+      if (!rawTranscript) {
 
         throw new Error(
           "Whisper returned an empty transcript."
@@ -319,8 +345,11 @@ transcribeButton.addEventListener(
       }
 
 
+      // Show timestamped version
       transcriptOutput.value =
-        transcript;
+        formatTimestampedTranscript(
+          result
+        );
 
 
       status.textContent =
@@ -352,6 +381,89 @@ transcribeButton.addEventListener(
 
 
 // ==========================================
+// FORMAT TIMESTAMPED TRANSCRIPT
+// ==========================================
+
+function formatTimestampedTranscript(result) {
+
+  if (
+    !result.chunks ||
+    !result.chunks.length
+  ) {
+
+    return result.text || "";
+
+  }
+
+
+  return result.chunks
+    .map(chunk => {
+
+      const start =
+        chunk.timestamp?.[0] ?? 0;
+
+      const end =
+        chunk.timestamp?.[1];
+
+
+      const startText =
+        formatTime(start);
+
+
+      const endText =
+        typeof end === "number"
+          ? formatTime(end)
+          : "--:--";
+
+
+      const text =
+        chunk.text?.trim() || "";
+
+
+      return (
+        `[${startText} - ${endText}]\n` +
+        `${text}`
+      );
+
+    })
+    .join("\n\n");
+
+}
+
+
+
+// ==========================================
+// FORMAT SECONDS
+// ==========================================
+
+function formatTime(seconds) {
+
+  const total =
+    Math.max(
+      0,
+      Math.floor(seconds)
+    );
+
+
+  const minutes =
+    Math.floor(total / 60);
+
+
+  const secs =
+    total % 60;
+
+
+  return (
+    String(minutes).padStart(2, "0") +
+    ":" +
+    String(secs).padStart(2, "0")
+  );
+
+}
+
+
+
+// ==========================================
 // GENERATE KEY POINTS
 // ==========================================
 
@@ -359,11 +471,7 @@ keyPointsButton.addEventListener(
   "click",
   () => {
 
-    const transcript =
-      transcriptOutput.value.trim();
-
-
-    if (!transcript) return;
+    if (!rawTranscript) return;
 
 
     keyPointsStatus.textContent =
@@ -374,7 +482,7 @@ keyPointsButton.addEventListener(
 
       const points =
         extractKeyPoints(
-          transcript,
+          rawTranscript,
           6
         );
 
@@ -390,7 +498,9 @@ keyPointsButton.addEventListener(
 
       keyPointsOutput.value =
         points
-          .map(point => `• ${point}`)
+          .map(point =>
+            `• ${point}`
+          )
           .join("\n\n");
 
 
@@ -414,7 +524,7 @@ keyPointsButton.addEventListener(
 
 
 // ==========================================
-// MAIN KEY-POINT SYSTEM
+// KEY POINT EXTRACTION
 // ==========================================
 
 function extractKeyPoints(
@@ -426,9 +536,6 @@ function extractKeyPoints(
     splitIntoSentences(text);
 
 
-  // Break extremely long sentences
-  // into more useful information units.
-
   let candidates = [];
 
 
@@ -436,7 +543,6 @@ function extractKeyPoints(
 
     const parts =
       splitLongSentence(sentence);
-
 
     candidates.push(...parts);
 
@@ -519,31 +625,28 @@ function extractKeyPoints(
             frequency[word]
           ) {
 
-            score +=
-              frequency[word];
+            score += frequency[word];
 
           }
 
         }
 
 
-        // Avoid favoring a sentence simply
-        // because it is very long.
-
         score =
           score /
           Math.sqrt(
-            Math.max(words.length, 1)
+            Math.max(
+              words.length,
+              1
+            )
           );
 
 
-        // Numbers are often important
         if (/\d/.test(candidate)) {
           score += 5;
         }
 
 
-        // Named entities / names
         const capitalized =
           candidate.match(
             /\b[A-Z][A-Za-z0-9.-]+\b/g
@@ -561,27 +664,21 @@ function extractKeyPoints(
         }
 
 
-        // Important informational language
-
         if (
-  /\b(important|key|main|new|announce|announced|launch|launched|release|released|open-source|open sourcing|model|weights|study|research|result|found|shows|means|because|therefore|cause|effect|risk|benefit|increase|decrease|future|coming|plan|planning|agent|available|first|largest|highest|latest)\b/i.test(candidate)
-) {
+          /\b(important|key|main|new|announce|announced|launch|launched|release|released|open-source|open sourcing|model|weights|study|research|result|found|shows|means|because|therefore|cause|effect|risk|benefit|increase|decrease|future|coming|plan|planning|agent|available|first|largest|highest|latest)\b/i.test(
+            candidate
+          )
+        ) {
 
           score += 5;
 
         }
 
 
-        // Early statements often introduce
-        // the central subject.
-
         if (index <= 2) {
           score += 2;
         }
 
-
-        // Conversational questions are usually
-        // not useful as study key points.
 
         if (
           /\?$/.test(candidate) ||
@@ -594,8 +691,6 @@ function extractKeyPoints(
 
         }
 
-
-        // Remove obvious filler
 
         if (
           /^(yeah|oh|well|um|uh|right|okay)\b/i.test(
@@ -655,9 +750,6 @@ function extractKeyPoints(
   }
 
 
-  // Keep a logical order rather than
-  // random score order.
-
   selected.sort(
     (a, b) =>
       a.index - b.index
@@ -666,7 +758,9 @@ function extractKeyPoints(
 
   return selected
     .map(item =>
-      makeConcisePoint(item.text)
+      makeConcisePoint(
+        item.text
+      )
     )
     .filter(Boolean);
 
@@ -676,7 +770,6 @@ function extractKeyPoints(
 
 // ==========================================
 // SENTENCE SPLITTING
-// FIXES THINGS LIKE "1.2"
 // ==========================================
 
 function splitIntoSentences(text) {
@@ -686,10 +779,6 @@ function splitIntoSentences(text) {
       .replace(/\s+/g, " ")
       .trim();
 
-
-  // Best option on modern browsers.
-  // Intl.Segmenter understands sentence
-  // boundaries better than basic regex.
 
   if (
     typeof Intl !== "undefined" &&
@@ -726,7 +815,6 @@ function splitIntoSentences(text) {
     catch (error) {
 
       console.warn(
-        "Intl.Segmenter fallback",
         error
       );
 
@@ -734,10 +822,6 @@ function splitIntoSentences(text) {
 
   }
 
-
-  // Fallback:
-  // temporarily protect decimal points
-  // such as 1.2 or 3.14.
 
   const protectedText =
     normalized.replace(
@@ -767,7 +851,7 @@ function splitIntoSentences(text) {
 
 
 // ==========================================
-// SPLIT ONLY VERY LONG SENTENCES
+// SPLIT VERY LONG SENTENCES
 // ==========================================
 
 function splitLongSentence(sentence) {
@@ -793,7 +877,9 @@ function splitLongSentence(sentence) {
 
 
   return parts
-    .map(part => part.trim())
+    .map(part =>
+      part.trim()
+    )
     .filter(part =>
       part.length > 25
     );
@@ -803,7 +889,7 @@ function splitLongSentence(sentence) {
 
 
 // ==========================================
-// REMOVE SPEECH FILLER
+// CLEAN SENTENCE
 // ==========================================
 
 function cleanCandidate(text) {
@@ -849,7 +935,7 @@ function cleanCandidate(text) {
 
 
 // ==========================================
-// MAKE BULLETS CLEANER
+// CLEAN KEY POINT
 // ==========================================
 
 function makeConcisePoint(text) {
@@ -872,30 +958,22 @@ function makeConcisePoint(text) {
     );
 
 
-  // Remove duplicate spaces again
-
   point =
-    point.replace(/\s+/g, " ").trim();
+    point
+      .replace(/\s+/g, " ")
+      .trim();
 
-
-  // Avoid absurdly long bullets
 
   if (point.length > 220) {
 
-    const shortened =
+    point =
       findGoodCut(
         point,
         200
-      );
-
-
-    point =
-      shortened + "...";
+      ) + "...";
 
   }
 
-
-  // Capitalize beginning
 
   point =
     point.charAt(0).toUpperCase() +
@@ -909,7 +987,7 @@ function makeConcisePoint(text) {
 
 
 // ==========================================
-// FIND SAFE PLACE TO SHORTEN
+// SHORTEN LONG KEY POINT
 // ==========================================
 
 function findGoodCut(
@@ -958,7 +1036,7 @@ function findGoodCut(
 
 
 // ==========================================
-// TOKENIZATION
+// TOKENIZE
 // ==========================================
 
 function tokenize(text) {
@@ -1078,7 +1156,7 @@ function getMediaDuration(file) {
 
 
 // ==========================================
-// EXTRACT AUDIO FOR WHISPER
+// EXTRACT AUDIO
 // ==========================================
 
 async function convertToWhisperAudio(file) {
