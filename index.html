@@ -564,47 +564,8 @@ function extractKeyPoints(
         // Important informational language
 
         if (
-          /\b(
-            important|
-            key|
-            main|
-            new|
-            announce|
-            announced|
-            launch|
-            launched|
-            release|
-            released|
-            open-source|
-            open sourcing|
-            model|
-            weights|
-            study|
-            research|
-            result|
-            found|
-            shows|
-            means|
-            because|
-            therefore|
-            cause|
-            effect|
-            risk|
-            benefit|
-            increase|
-            decrease|
-            future|
-            coming|
-            plan|
-            planning|
-            agent|
-            available|
-            first|
-            largest|
-            highest|
-            latest
-          )\b/ix.test(candidate)
-        ) {
+  /\b(important|key|main|new|announce|announced|launch|launched|release|released|open-source|open sourcing|model|weights|study|research|result|found|shows|means|because|therefore|cause|effect|risk|benefit|increase|decrease|future|coming|plan|planning|agent|available|first|largest|highest|latest)\b/i.test(candidate)
+) {
 
           score += 5;
 
