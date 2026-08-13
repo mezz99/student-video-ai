@@ -558,7 +558,7 @@
       Student Video AI
     </div>
 
-    <div class="version">Stable · V1 Whisper</div>
+    <div class="version">Stable · English only</div>
   </header>
 
   <main class="shell">
@@ -669,9 +669,14 @@
 
           <div class="row">
             <button class="dark" id="studyBtn" type="button">
-              ✦ Create study pack
+              ✦ Create AI study pack
             </button>
           </div>
+
+          <p class="privacy">
+            The first study pack downloads a small English AI model.
+            Later uses are cached by the browser.
+          </p>
         </div>
 
         <div class="section">
@@ -679,7 +684,7 @@
             <div>
               <h3>Key points</h3>
               <p class="hint">
-                Important statements selected from the transcript.
+                Concise English notes generated from the transcript.
               </p>
             </div>
 
@@ -719,7 +724,7 @@
   </main>
 
   <footer class="shell">
-    <span>Student Video AI · Stable V1 build</span>
+    <span>Student Video AI · English-only build</span>
     <span>No uploads · No accounts · No stored videos</span>
   </footer>
 
@@ -728,46 +733,47 @@
   <script type="module">
     import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
 
-    /*
-     * Exact working V1 Whisper configuration.
-     */
     const MODEL = "onnx-community/whisper-tiny.en";
+    const STUDY_MODEL = "Xenova/flan-t5-small";
+
     const MAX_SIZE = 100 * 1024 * 1024;
     const MAX_DURATION = 10 * 60;
 
     const $ = id => document.getElementById(id);
 
     const el = {
-      input: $("fileInput"),
-      drop: $("dropZone"),
-      file: $("fileCard"),
-      fileName: $("fileName"),
-      fileMeta: $("fileMeta"),
-      remove: $("removeBtn"),
-      transcribe: $("transcribeBtn"),
-      status: $("status"),
-      statusText: $("statusText"),
-      percent: $("statusPercent"),
-      bar: $("bar"),
-      results: $("results"),
-      transcript: $("transcript"),
-      meta: $("transcriptMeta"),
-      study: $("studyBtn"),
-      points: $("points"),
-      pointsEmpty: $("pointsEmpty"),
-      quiz: $("quiz"),
-      quizEmpty: $("quizEmpty"),
-      copyTranscript: $("copyTranscript"),
-      downloadTranscript: $("downloadTranscript"),
-      copyPoints: $("copyPoints"),
-      toast: $("toast")
+      input:$("fileInput"),
+      drop:$("dropZone"),
+      file:$("fileCard"),
+      fileName:$("fileName"),
+      fileMeta:$("fileMeta"),
+      remove:$("removeBtn"),
+      transcribe:$("transcribeBtn"),
+      status:$("status"),
+      statusText:$("statusText"),
+      percent:$("statusPercent"),
+      bar:$("bar"),
+      results:$("results"),
+      transcript:$("transcript"),
+      meta:$("transcriptMeta"),
+      study:$("studyBtn"),
+      points:$("points"),
+      pointsEmpty:$("pointsEmpty"),
+      quiz:$("quiz"),
+      quizEmpty:$("quizEmpty"),
+      copyTranscript:$("copyTranscript"),
+      downloadTranscript:$("downloadTranscript"),
+      copyPoints:$("copyPoints"),
+      toast:$("toast")
     };
 
     let file = null;
     let duration = 0;
     let transcriber = null;
+    let studyGenerator = null;
     let rawText = "";
     let keyPoints = [];
+    let quizCards = [];
     let toastTimer;
 
     el.input.addEventListener("change", () => {
@@ -799,14 +805,14 @@
       updateMeta();
     });
 
-    ["dragenter", "dragover"].forEach(name => {
+    ["dragenter","dragover"].forEach(name => {
       el.drop.addEventListener(name, event => {
         event.preventDefault();
         el.drop.classList.add("drag");
       });
     });
 
-    ["dragleave", "drop"].forEach(name => {
+    ["dragleave","drop"].forEach(name => {
       el.drop.addEventListener(name, event => {
         event.preventDefault();
         el.drop.classList.remove("drag");
@@ -876,10 +882,6 @@
       try {
         setStatus("Extracting audio…", null, true);
 
-        /*
-         * Decode and convert the uploaded media to the mono
-         * 16 kHz Float32Array format Whisper expects.
-         */
         const audio = await whisperAudio(file);
 
         if (!transcriber) {
@@ -893,9 +895,9 @@
             "automatic-speech-recognition",
             MODEL,
             {
-              dtype: "fp32",
+              dtype:"fp32",
 
-              progress_callback: data => {
+              progress_callback:data => {
                 if (
                   data?.status !== "progress" ||
                   typeof data.progress !== "number"
@@ -905,14 +907,12 @@
 
                 const progress = Math.max(
                   0,
-                  Math.min(100, Math.round(data.progress))
+                  Math.min(
+                    100,
+                    Math.round(data.progress)
+                  )
                 );
 
-                /*
-                 * A single model file reaching 100% does not mean
-                 * the complete model is ready. Keep the progress
-                 * animation active while the remaining files load.
-                 */
                 if (progress >= 100) {
                   setStatus(
                     "Model file ready · preparing the remaining files…",
@@ -933,32 +933,36 @@
 
         setStatus("Transcribing the lesson…", null, true);
 
-        /*
-         * Exact transcription options used by the working V1.
-         */
         const result = await transcriber(audio, {
-          chunk_length_s: 30,
-          stride_length_s: 5,
-          return_timestamps: true
+          chunk_length_s:30,
+          stride_length_s:5,
+          return_timestamps:true
         });
 
         rawText = (result.text || "")
-          .replace(/\s+/g, " ")
+          .replace(/\s+/g," ")
           .trim();
 
         if (!rawText) {
-          throw new Error("Whisper returned an empty transcript.");
+          throw new Error(
+            "Whisper returned an empty transcript."
+          );
         }
 
         el.transcript.value = timestamped(result);
 
         updateMeta();
         el.results.classList.add("show");
-        setStatus("Transcript complete.", 100, false);
+
+        setStatus(
+          "Transcript complete.",
+          100,
+          false
+        );
 
         el.results.scrollIntoView({
-          behavior: "smooth",
-          block: "start"
+          behavior:"smooth",
+          block:"start"
         });
       } catch (error) {
         console.error(error);
@@ -969,48 +973,49 @@
     }
 
     async function whisperAudio(mediaFile) {
-      const AudioContextClass =
+      const Context =
         window.AudioContext ||
         window.webkitAudioContext;
 
-      if (!AudioContextClass) {
+      if (!Context) {
         throw new Error(
           "Audio processing is not supported in this browser."
         );
       }
 
-      const context = new AudioContextClass();
+      const context = new Context();
 
       try {
         if (context.state === "suspended") {
           await context.resume();
         }
 
-        const arrayBuffer = await mediaFile.arrayBuffer();
+        const arrayBuffer =
+          await mediaFile.arrayBuffer();
 
-        /*
-         * slice(0) gives decodeAudioData its own ArrayBuffer.
-         * This matches the reliable approach used in V1.
-         */
-        const decoded = await context.decodeAudioData(
-          arrayBuffer.slice(0)
-        );
+        const decoded =
+          await context.decodeAudioData(
+            arrayBuffer.slice(0)
+          );
 
-        const sampleRate = 16000;
+        const rate = 16000;
 
-        const offline = new OfflineAudioContext(
-          1,
-          Math.ceil(decoded.duration * sampleRate),
-          sampleRate
-        );
+        const offline =
+          new OfflineAudioContext(
+            1,
+            Math.ceil(decoded.duration * rate),
+            rate
+          );
 
-        const source = offline.createBufferSource();
+        const source =
+          offline.createBufferSource();
 
         source.buffer = decoded;
         source.connect(offline.destination);
         source.start();
 
-        const rendered = await offline.startRendering();
+        const rendered =
+          await offline.startRendering();
 
         return new Float32Array(
           rendered.getChannelData(0)
@@ -1020,45 +1025,479 @@
       }
     }
 
-    function createStudyPack() {
-      rawText = stripTimestamps(el.transcript.value);
+    async function createStudyPack() {
+      rawText =
+        stripTimestamps(el.transcript.value);
 
       if (words(rawText).length < 18) {
         toast("The transcript is too short.");
         return;
       }
 
-      keyPoints = extractPoints(rawText, 6);
+      const originalLabel =
+        el.study.textContent;
 
-      renderPoints();
-      renderQuiz();
+      const candidates =
+        extractPoints(rawText,5);
 
-      el.copyPoints.disabled = !keyPoints.length;
+      clearStudyPack();
 
-      toast("Study pack ready.");
+      el.study.disabled = true;
+      el.study.textContent =
+        "Creating with local AI…";
+
+      try {
+        if (!studyGenerator) {
+          setStatus(
+            "Downloading the English study AI…",
+            null,
+            true
+          );
+
+          studyGenerator = await pipeline(
+            "text2text-generation",
+            STUDY_MODEL,
+            {
+              dtype:"q8",
+
+              progress_callback:data => {
+                if (
+                  data?.status !== "progress" ||
+                  typeof data.progress !== "number"
+                ) {
+                  return;
+                }
+
+                const progress = Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    Math.round(data.progress)
+                  )
+                );
+
+                if (progress >= 100) {
+                  setStatus(
+                    "Study model file ready · preparing the remaining files…",
+                    null,
+                    true
+                  );
+                } else {
+                  setStatus(
+                    "Downloading the English study AI…",
+                    progress,
+                    false
+                  );
+                }
+              }
+            }
+          );
+        }
+
+        const cards = [];
+
+        for (
+          let index = 0;
+          index < candidates.length;
+          index++
+        ) {
+          setStatus(
+            `Creating study card ${index + 1} of ${candidates.length}…`,
+            Math.round(
+              (index / candidates.length) * 100
+            ),
+            false
+          );
+
+          const card =
+            await generateStudyCard(
+              candidates[index],
+              index
+            );
+
+          cards.push(card);
+        }
+
+        keyPoints =
+          cards.map(card => card.note);
+
+        quizCards = cards;
+
+        renderPoints();
+        renderQuiz();
+
+        el.copyPoints.disabled =
+          !keyPoints.length;
+
+        setStatus(
+          "Study pack complete.",
+          100,
+          false
+        );
+
+        toast("AI study pack ready.");
+      } catch (error) {
+        console.error(error);
+
+        quizCards =
+          candidates.map((source,index) => {
+            return fallbackStudyCard(
+              source,
+              index
+            );
+          });
+
+        keyPoints =
+          quizCards.map(card => card.note);
+
+        renderPoints();
+        renderQuiz();
+
+        el.copyPoints.disabled =
+          !keyPoints.length;
+
+        setStatus(
+          "Study pack complete · compatibility mode.",
+          100,
+          false
+        );
+
+        toast(
+          "Study pack ready. Local AI fallback was used."
+        );
+      } finally {
+        el.study.disabled = false;
+        el.study.textContent = originalLabel;
+      }
     }
 
-    function extractPoints(text, maximum) {
-      const sentences = splitSentences(text).filter(sentence => {
-        return words(sentence).length >= 6 &&
-          sentence.length >= 30;
-      });
+    async function generateStudyCard(
+      source,
+      index
+    ) {
+      const prompt =
+`You are an English study assistant.
+Use only the source fact below.
+Do not invent information.
+Return exactly two lines.
+NOTE: Rewrite the fact as one clear concise study note of no more than 28 words. Keep important names and numbers.
+QUESTION: Write one specific question that is answered by the note. Do not include the answer in the question.
+SOURCE FACT: ${source}`;
 
-      const stopWords = new Set(
-        "the a an and or but to of in on for with at by from " +
-        "is are was were be been it this that these those i you " +
-        "he she we they as so do does did have has had can could " +
-        "would should just also more some"
-          .split(" ")
+      const output = await studyGenerator(
+        prompt,
+        {
+          max_new_tokens:96,
+          do_sample:false,
+          repetition_penalty:1.12
+        }
+      );
+
+      const generated =
+        (output?.[0]?.generated_text || "")
+          .trim();
+
+      const generatedNote =
+        field(generated,"NOTE");
+
+      const generatedQuestion =
+        field(generated,"QUESTION");
+
+      const safeNote =
+        validNote(generatedNote,source)
+          ? cleanSentence(generatedNote)
+          : conciseNote(source);
+
+      const safeQuestion =
+        validQuestion(generatedQuestion)
+          ? cleanQuestion(generatedQuestion)
+          : specificQuestion(
+              safeNote,
+              index
+            );
+
+      return {
+        note:safeNote,
+        question:safeQuestion,
+        answer:safeNote,
+        source
+      };
+    }
+
+    function field(text,label) {
+      const expression = new RegExp(
+        `${label}:\\s*([\\s\\S]*?)(?=\\s+(?:NOTE|QUESTION|ANSWER):|$)`,
+        "i"
+      );
+
+      const match =
+        text.match(expression);
+
+      return (
+        match?.[1]
+          ?.replace(/^[\-*\s]+/,"")
+          .trim() ||
+        ""
+      );
+    }
+
+    function validNote(note,source) {
+      if (
+        !note ||
+        words(note).length < 5 ||
+        words(note).length > 38 ||
+        /source fact|rewrite|question:/i.test(note)
+      ) {
+        return false;
+      }
+
+      const sourceTerms =
+        new Set(
+          words(source).filter(word => {
+            return word.length > 4;
+          })
+        );
+
+      const overlap =
+        words(note).filter(word => {
+          return sourceTerms.has(word);
+        }).length;
+
+      return overlap >=
+        Math.min(2,sourceTerms.size);
+    }
+
+    function validQuestion(question) {
+      return Boolean(
+        question &&
+        question.length >= 12 &&
+        question.length <= 180 &&
+        question.includes("?") &&
+        !/source fact|write one|question:/i
+          .test(question)
+      );
+    }
+
+    function conciseNote(source) {
+      let note = source
+        .replace(
+          /^(?:well|so|now|basically|essentially|in other words|the important thing is(?: that)?|i am proud to share that|i'm proud to share that)\s*[,—:-]?\s*/i,
+          ""
+        )
+        .trim();
+
+      note = note.replace(/\s+/g," ");
+
+      if (words(note).length > 32) {
+        const cut = note
+          .split(
+            /;|—|\s+and\s+(?=(?:it|this|they|we|the)\b)/i
+          )[0]
+          .trim();
+
+        if (words(cut).length >= 8) {
+          note = cut;
+        } else {
+          note = note
+            .split(/\s+/)
+            .slice(0,32)
+            .join(" ")
+            .replace(/[,;:]$/,"");
+        }
+      }
+
+      return cleanSentence(note);
+    }
+
+    function specificQuestion(note,index) {
+      const clean =
+        note.replace(/[.!?]+$/,"");
+
+      const isMatch =
+        clean.match(
+          /^(.{3,70}?)\s+(?:is|are|was|were)\s+(.+)$/i
+        );
+
+      if (isMatch) {
+        return (
+          "What does the lesson explain about " +
+          `${shortSubject(isMatch[1])}?`
+        );
+      }
+
+      const canMatch =
+        clean.match(
+          /^(.{3,70}?)\s+(can|could)\s+(.+)$/i
+        );
+
+      if (canMatch) {
+        return (
+          `What ${canMatch[2].toLowerCase()} ` +
+          `${shortSubject(canMatch[1])} do?`
+        );
+      }
+
+      const willMatch =
+        clean.match(
+          /^(.{3,70}?)\s+(?:will|is going to|are going to)\s+(.+)$/i
+        );
+
+      if (willMatch) {
+        return (
+          "What is planned or expected for " +
+          `${shortSubject(willMatch[1])}?`
+        );
+      }
+
+      const number =
+        clean.match(
+          /\b\d[\d,.]*(?:\s*(?:billion|million|thousand|%|percent|hours?|minutes?|parameters?))?\b/i
+        );
+
+      if (number) {
+        return (
+          "What important specification involving " +
+          `${number[0]} is mentioned?`
+        );
+      }
+
+      const subjects =
+        importantTerms(clean)
+          .slice(0,2)
+          .join(" and ");
+
+      const starters = [
+        "What key fact does the lesson give about",
+        "What change is described concerning",
+        "What should a student remember about",
+        "What main claim is made about",
+        "How does the lesson describe"
+      ];
+
+      return (
+        `${starters[index % starters.length]} ` +
+        `${subjects || "this topic"}?`
+      );
+    }
+
+    function fallbackStudyCard(
+      source,
+      index
+    ) {
+      const note =
+        conciseNote(source);
+
+      return {
+        note,
+        question:specificQuestion(
+          note,
+          index
+        ),
+        answer:note,
+        source
+      };
+    }
+
+    function cleanSentence(text) {
+      const clean = text
+        .replace(/^["']|["']$/g,"")
+        .replace(/\s+/g," ")
+        .trim();
+
+      if (!clean) {
+        return clean;
+      }
+
+      return (
+        clean[0].toUpperCase() +
+        clean.slice(1).replace(/[.!?]*$/,".")
+      );
+    }
+
+    function cleanQuestion(text) {
+      const clean = text
+        .replace(/^["']|["']$/g,"")
+        .replace(/\s+/g," ")
+        .replace(/[.!?]+$/,"")
+        .trim();
+
+      if (!clean) {
+        return clean;
+      }
+
+      return (
+        clean[0].toUpperCase() +
+        clean.slice(1) +
+        "?"
+      );
+    }
+
+    function shortSubject(text) {
+      return text
+        .replace(
+          /^(?:and|but|that|this|the fact that)\s+/i,
+          ""
+        )
+        .trim()
+        .split(/\s+/)
+        .slice(0,9)
+        .join(" ");
+    }
+
+    function importantTerms(text) {
+      const stop = new Set(
+        (
+          "the a an and or but to of in on for with " +
+          "at by from is are was were be been it this " +
+          "that these those i you he she we they as so " +
+          "do does did have has had can could would " +
+          "should just also more some into about their " +
+          "our your its"
+        ).split(" ")
+      );
+
+      const seen = new Set();
+
+      return words(text).filter(word => {
+        return (
+          word.length > 3 &&
+          !stop.has(word) &&
+          !seen.has(word) &&
+          seen.add(word)
+        );
+      });
+    }
+
+    function extractPoints(text,maximum) {
+      const sentences =
+        splitSentences(text).filter(sentence => {
+          return (
+            words(sentence).length >= 6 &&
+            sentence.length >= 30
+          );
+        });
+
+      const stop = new Set(
+        (
+          "the a an and or but to of in on for with " +
+          "at by from is are was were be been it this " +
+          "that these those i you he she we they as so " +
+          "do does did have has had can could would " +
+          "should just also more some"
+        ).split(" ")
       );
 
       const frequency = new Map();
 
-      const tokens = sentences.map(sentence => {
-        return words(sentence).filter(word => {
-          return word.length > 2 && !stopWords.has(word);
+      const tokens =
+        sentences.map(sentence => {
+          return words(sentence).filter(word => {
+            return (
+              word.length > 2 &&
+              !stop.has(word)
+            );
+          });
         });
-      });
 
       tokens.forEach(list => {
         new Set(list).forEach(word => {
@@ -1069,31 +1508,52 @@
         });
       });
 
-      const scored = sentences.map((text, index) => {
-        const score =
-          tokens[index].reduce((total, word) => {
-            return total + (frequency.get(word) || 0);
-          }, 0) /
-          Math.sqrt(Math.max(tokens[index].length, 1)) +
-          (index < 2 ? 1 : 0);
+      const scored =
+        sentences.map((text,index) => {
+          const score =
+            tokens[index].reduce(
+              (total,word) => {
+                return (
+                  total +
+                  (frequency.get(word) || 0)
+                );
+              },
+              0
+            ) /
+            Math.sqrt(
+              Math.max(
+                tokens[index].length,
+                1
+              )
+            ) +
+            (index < 2 ? 1 : 0);
 
-        return {
-          text,
-          index,
-          score
-        };
-      });
+          return {
+            text,
+            index,
+            score
+          };
+        });
 
-      scored.sort((a, b) => b.score - a.score);
+      scored.sort(
+        (first,second) =>
+          second.score - first.score
+      );
 
       const chosen = [];
 
       for (const candidate of scored) {
-        const tooSimilar = chosen.some(item => {
-          return similarity(item.text, candidate.text) > .48;
-        });
+        const duplicate =
+          chosen.some(item => {
+            return (
+              similarity(
+                item.text,
+                candidate.text
+              ) > .48
+            );
+          });
 
-        if (tooSimilar) {
+        if (duplicate) {
           continue;
         }
 
@@ -1101,25 +1561,37 @@
 
         if (
           chosen.length >=
-          Math.min(maximum, sentences.length)
+          Math.min(
+            maximum,
+            sentences.length
+          )
         ) {
           break;
         }
       }
 
       return chosen
-        .sort((a, b) => a.index - b.index)
+        .sort(
+          (first,second) =>
+            first.index - second.index
+        )
         .map(item => item.text.trim());
     }
 
     function renderPoints() {
       el.points.replaceChildren();
-      el.pointsEmpty.hidden = keyPoints.length > 0;
 
-      keyPoints.forEach((point, index) => {
-        const item = document.createElement("li");
+      el.pointsEmpty.hidden =
+        keyPoints.length > 0;
 
-        item.dataset.n = String(index + 1).padStart(2, "0");
+      keyPoints.forEach((point,index) => {
+        const item =
+          document.createElement("li");
+
+        item.dataset.n =
+          String(index + 1)
+            .padStart(2,"0");
+
         item.textContent = point;
 
         el.points.appendChild(item);
@@ -1128,38 +1600,67 @@
 
     function renderQuiz() {
       el.quiz.replaceChildren();
-      el.quizEmpty.hidden = keyPoints.length > 0;
 
-      keyPoints.slice(0, 5).forEach((point, index) => {
-        const card = document.createElement("article");
-        card.className = "question";
+      el.quizEmpty.hidden =
+        quizCards.length > 0;
 
-        const label = document.createElement("div");
-        label.className = "q-label";
-        label.textContent = `Question ${index + 1}`;
+      quizCards
+        .slice(0,5)
+        .forEach((item,index) => {
+          const card =
+            document.createElement("article");
 
-        const title = document.createElement("div");
-        title.className = "q-title";
-        title.textContent =
-          "What important idea was explained in this part of the lesson?";
+          card.className = "question";
 
-        const button = document.createElement("button");
-        button.className = "ghost small";
-        button.textContent = "Show answer";
+          const label =
+            document.createElement("div");
 
-        const answer = document.createElement("div");
-        answer.className = "answer";
-        answer.textContent = point;
+          label.className = "q-label";
+          label.textContent =
+            `Question ${index + 1}`;
 
-        button.addEventListener("click", () => {
-          answer.classList.add("show");
-          button.disabled = true;
-          button.textContent = "Answer revealed";
+          const title =
+            document.createElement("div");
+
+          title.className = "q-title";
+          title.textContent =
+            item.question;
+
+          const button =
+            document.createElement("button");
+
+          button.className =
+            "ghost small";
+
+          button.textContent =
+            "Show answer";
+
+          const answer =
+            document.createElement("div");
+
+          answer.className = "answer";
+          answer.textContent =
+            item.answer;
+
+          button.addEventListener(
+            "click",
+            () => {
+              answer.classList.add("show");
+              button.disabled = true;
+              button.textContent =
+                "Answer revealed";
+            }
+          );
+
+          card.append(
+            label,
+            title,
+            button,
+            answer
+          );
+
+          el.quiz.appendChild(card);
         });
-
-        card.append(label, title, button, answer);
-        el.quiz.appendChild(card);
-      });
     }
 
     function timestamped(result) {
@@ -1167,19 +1668,24 @@
         return result.text || "";
       }
 
-      return result.chunks.map(chunk => {
-        const start = clock(chunk.timestamp?.[0] || 0);
+      return result.chunks
+        .map(chunk => {
+          const start =
+            clock(
+              chunk.timestamp?.[0] || 0
+            );
 
-        const end =
-          typeof chunk.timestamp?.[1] === "number"
-            ? clock(chunk.timestamp[1])
-            : "--:--";
+          const end =
+            typeof chunk.timestamp?.[1] === "number"
+              ? clock(chunk.timestamp[1])
+              : "--:--";
 
-        return (
-          `[${start} – ${end}]\n` +
-          `${(chunk.text || "").trim()}`
-        );
-      }).join("\n\n");
+          return (
+            `[${start} – ${end}]\n` +
+            `${(chunk.text || "").trim()}`
+          );
+        })
+        .join("\n\n");
     }
 
     function stripTimestamps(text) {
@@ -1188,19 +1694,24 @@
           /^\s*\[\d{1,3}:\d{2}\s*[–-]\s*(?:\d{1,3}:\d{2}|--:--)\]\s*/gm,
           ""
         )
-        .replace(/\s+/g, " ")
+        .replace(/\s+/g," ")
         .trim();
     }
 
     function splitSentences(text) {
       return (
         text
-          .replace(/(\d)\.(\d)/g, "$1__DOT__$2")
-          .match(/[^.!?]+[.!?]+|[^.!?]+$/g) || []
+          .replace(
+            /(\d)\.(\d)/g,
+            "$1__DOT__$2"
+          )
+          .match(
+            /[^.!?]+[.!?]+|[^.!?]+$/g
+          ) || []
       )
         .map(sentence => {
           return sentence
-            .replace(/__DOT__/g, ".")
+            .replace(/__DOT__/g,".")
             .trim();
         })
         .filter(Boolean);
@@ -1209,30 +1720,40 @@
     function words(text) {
       return text
         .toLowerCase()
-        .replace(/[^a-z0-9'.-]/g, " ")
+        .replace(
+          /[^a-z0-9'.-]/g,
+          " "
+        )
         .split(/\s+/)
         .filter(Boolean);
     }
 
-    function similarity(first, second) {
-      const firstWords = new Set(words(first));
-      const secondWords = new Set(words(second));
+    function similarity(first,second) {
+      const firstWords =
+        new Set(words(first));
 
-      const common = [...firstWords].filter(word => {
-        return secondWords.has(word);
-      }).length;
+      const secondWords =
+        new Set(words(second));
 
-      const union = new Set([
-        ...firstWords,
-        ...secondWords
-      ]).size;
+      const common =
+        [...firstWords].filter(word => {
+          return secondWords.has(word);
+        }).length;
 
-      return union ? common / union : 0;
+      const union =
+        new Set([
+          ...firstWords,
+          ...secondWords
+        ]).size;
+
+      return union
+        ? common / union
+        : 0;
     }
 
     function formatPoints() {
       return keyPoints
-        .map((point, index) => {
+        .map((point,index) => {
           return `${index + 1}. ${point}`;
         })
         .join("\n\n");
@@ -1245,31 +1766,38 @@
     }
 
     function mediaDuration(mediaFile) {
-      return new Promise((resolve, reject) => {
-        const media = document.createElement(
-          mediaFile.type.startsWith("video/")
-            ? "video"
-            : "audio"
-        );
+      return new Promise(
+        (resolve,reject) => {
+          const media =
+            document.createElement(
+              mediaFile.type.startsWith("video/")
+                ? "video"
+                : "audio"
+            );
 
-        const url = URL.createObjectURL(mediaFile);
+          const url =
+            URL.createObjectURL(mediaFile);
 
-        media.preload = "metadata";
+          media.preload = "metadata";
 
-        media.onloadedmetadata = () => {
-          URL.revokeObjectURL(url);
-          resolve(media.duration);
-        };
+          media.onloadedmetadata = () => {
+            URL.revokeObjectURL(url);
+            resolve(media.duration);
+          };
 
-        media.onerror = () => {
-          URL.revokeObjectURL(url);
-          reject(
-            new Error("This media format is not supported.")
-          );
-        };
+          media.onerror = () => {
+            URL.revokeObjectURL(url);
 
-        media.src = url;
-      });
+            reject(
+              new Error(
+                "This media format is not supported."
+              )
+            );
+          };
+
+          media.src = url;
+        }
+      );
     }
 
     function setStatus(
@@ -1316,21 +1844,30 @@
         error?.message ||
         "Something went wrong.";
 
-      if (/memory|allocation|out of bounds/i.test(message)) {
+      if (
+        /memory|allocation|out of bounds/i
+          .test(message)
+      ) {
         return (
           "This device ran out of memory. " +
           "Try a shorter video."
         );
       }
 
-      if (/decode|audio|media|format/i.test(message)) {
+      if (
+        /decode|audio|media|format/i
+          .test(message)
+      ) {
         return (
           "Your browser could not read this audio. " +
           "Try MP4, MP3, M4A, or WAV."
         );
       }
 
-      if (/fetch|network|download|404/i.test(message)) {
+      if (
+        /fetch|network|download|404/i
+          .test(message)
+      ) {
         return (
           "The Whisper model could not download. " +
           "Check your internet and refresh the page."
@@ -1350,6 +1887,7 @@
 
     function clearStudyPack() {
       keyPoints = [];
+      quizCards = [];
 
       el.points.replaceChildren();
       el.quiz.replaceChildren();
@@ -1361,7 +1899,6 @@
 
     function clearResults() {
       rawText = "";
-
       el.transcript.value = "";
       el.results.classList.remove("show");
 
@@ -1381,8 +1918,8 @@
 
       if (scroll) {
         el.drop.scrollIntoView({
-          behavior: "smooth",
-          block: "center"
+          behavior:"smooth",
+          block:"center"
         });
       }
     }
@@ -1390,43 +1927,56 @@
     function clock(seconds) {
       const number = Math.max(
         0,
-        Math.floor(Number(seconds) || 0)
+        Math.floor(
+          Number(seconds) || 0
+        )
       );
 
-      const minutes = Math.floor(number / 60);
-      const remainingSeconds = number % 60;
+      const minutes =
+        Math.floor(number / 60);
+
+      const remainingSeconds =
+        number % 60;
 
       return (
-        `${String(minutes).padStart(2, "0")}:` +
-        `${String(remainingSeconds).padStart(2, "0")}`
+        `${String(minutes).padStart(2,"0")}:` +
+        `${String(remainingSeconds).padStart(2,"0")}`
       );
     }
 
     function formatBytes(bytes) {
       if (bytes < 1048576) {
-        return `${Math.max(
-          1,
-          Math.round(bytes / 1024)
-        )} KB`;
+        return (
+          `${Math.max(
+            1,
+            Math.round(bytes / 1024)
+          )} KB`
+        );
       }
 
-      return `${(bytes / 1048576).toFixed(1)} MB`;
+      return (
+        `${(bytes / 1048576).toFixed(1)} MB`
+      );
     }
 
-    async function copy(text, message) {
+    async function copy(text,message) {
       if (!text.trim()) {
         return;
       }
 
       try {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard
+          .writeText(text);
       } catch {
-        const textarea = document.createElement("textarea");
+        const textarea =
+          document.createElement("textarea");
 
         textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
 
+        document.body
+          .appendChild(textarea);
+
+        textarea.select();
         document.execCommand("copy");
         textarea.remove();
       }
@@ -1434,7 +1984,7 @@
       toast(message);
     }
 
-    function download(name, text) {
+    function download(name,text) {
       if (!text.trim()) {
         return;
       }
@@ -1446,8 +1996,11 @@
         }
       );
 
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
+      const url =
+        URL.createObjectURL(blob);
+
+      const anchor =
+        document.createElement("a");
 
       anchor.href = url;
       anchor.download = name;
@@ -1458,7 +2011,7 @@
 
       setTimeout(() => {
         URL.revokeObjectURL(url);
-      }, 1000);
+      },1000);
     }
 
     function toast(message) {
@@ -1469,7 +2022,7 @@
 
       toastTimer = setTimeout(() => {
         el.toast.classList.remove("show");
-      }, 2200);
+      },2200);
     }
   </script>
 </body>
