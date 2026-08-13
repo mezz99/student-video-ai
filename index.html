@@ -307,6 +307,12 @@
       font-size:12px;
     }
 
+    .view-button.active {
+      border-color:var(--dark);
+      background:var(--dark);
+      color:#fff;
+    }
+
     .status {
       display:none;
       margin-top:20px;
@@ -442,6 +448,20 @@
       font-weight:900;
     }
 
+    .point-title {
+      display:block;
+      margin-bottom:3px;
+      color:#c8431c;
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.09em;
+      text-transform:uppercase;
+    }
+
+    .point-text {
+      display:block;
+    }
+
     .empty {
       border:1px dashed #c5cac0;
       border-radius:14px;
@@ -476,7 +496,58 @@
       font-weight:800;
     }
 
-    .answer {
+    .choices {
+      display:grid;
+      gap:8px;
+    }
+
+    .choice {
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      width:100%;
+      min-height:46px;
+      border:1px solid var(--line);
+      background:#fff;
+      text-align:left;
+      font-weight:650;
+    }
+
+    .choice:hover:not(:disabled) {
+      border-color:#9ba69d;
+      background:#f8faef;
+    }
+
+    .choice-letter {
+      display:grid;
+      min-width:25px;
+      height:25px;
+      place-items:center;
+      border-radius:7px;
+      background:#edf0e9;
+      font-size:11px;
+      font-weight:900;
+    }
+
+    .choice.correct {
+      border-color:#48a96f;
+      background:#eaf8ee;
+      color:#115c34;
+      opacity:1;
+    }
+
+    .choice.wrong {
+      border-color:#d36b63;
+      background:#fff0ee;
+      color:#8c2823;
+      opacity:1;
+    }
+
+    .choice.neutral {
+      opacity:.55;
+    }
+
+    .feedback {
       display:none;
       margin-top:10px;
       border-left:3px solid var(--lime);
@@ -485,8 +556,13 @@
       font-size:13px;
     }
 
-    .answer.show {
+    .feedback.show {
       display:block;
+    }
+
+    .feedback.bad {
+      border-left-color:#d84b3f;
+      background:#fff0ee;
     }
 
     footer {
@@ -569,8 +645,8 @@
       </div>
 
       <p>
-        Upload an English lesson and get a timestamped transcript,
-        key points, and a revision quiz—directly in your browser.
+        Upload an English lesson and get a transcript, key points,
+        and a revision quiz—directly in your browser.
       </p>
     </section>
 
@@ -637,8 +713,8 @@
         </div>
 
         <p class="privacy">
-          🔒 Your media stays in this browser. No account, API key,
-          or server upload.
+          🔒 Your media stays in this browser. No account,
+          API key, or server upload.
         </p>
       </div>
 
@@ -646,11 +722,27 @@
         <div class="section">
           <div class="section-head">
             <div>
-              <h3>Timestamped transcript</h3>
+              <h3 id="transcriptTitle">Clean transcript</h3>
               <p class="hint" id="transcriptMeta"></p>
             </div>
 
             <div class="tools">
+              <button
+                class="ghost small view-button active"
+                id="cleanView"
+                type="button"
+              >
+                Clean
+              </button>
+
+              <button
+                class="ghost small view-button"
+                id="timedView"
+                type="button"
+              >
+                Timestamps
+              </button>
+
               <button class="ghost small" id="copyTranscript">
                 Copy
               </button>
@@ -674,8 +766,8 @@
           </div>
 
           <p class="privacy">
-            The first study pack downloads a small English AI model.
-            Later uses are cached by the browser.
+            Clean view is best for reading. Use compact timestamps
+            when editing a dialogue or video.
           </p>
         </div>
 
@@ -683,8 +775,9 @@
           <div class="section-head">
             <div>
               <h3>Key points</h3>
+
               <p class="hint">
-                Concise English notes generated from the transcript.
+                Structured English notes generated from the transcript.
               </p>
             </div>
 
@@ -710,7 +803,8 @@
           <h3>Revision quiz</h3>
 
           <p class="hint">
-            Think of the answer first, then reveal it.
+            Choose an answer. The app marks it immediately
+            and shows the correct explanation.
           </p>
 
           <div class="empty" id="quizEmpty">
@@ -755,6 +849,9 @@
       bar:$("bar"),
       results:$("results"),
       transcript:$("transcript"),
+      title:$("transcriptTitle"),
+      cleanView:$("cleanView"),
+      timedView:$("timedView"),
       meta:$("transcriptMeta"),
       study:$("studyBtn"),
       points:$("points"),
@@ -773,8 +870,16 @@
     let studyGenerator = null;
     let rawText = "";
     let keyPoints = [];
+    let pointTitles = [];
     let quizCards = [];
     let toastTimer;
+
+    let transcriptMode = "clean";
+
+    let transcriptViews = {
+      clean:"",
+      timed:""
+    };
 
     el.input.addEventListener("change", () => {
       chooseFile(el.input.files[0]);
@@ -785,7 +890,7 @@
     el.study.addEventListener("click", createStudyPack);
 
     el.copyTranscript.addEventListener("click", () => {
-      copy(el.transcript.value, "Transcript copied.");
+      copy(el.transcript.value,"Transcript copied.");
     });
 
     el.downloadTranscript.addEventListener("click", () => {
@@ -796,7 +901,7 @@
     });
 
     el.copyPoints.addEventListener("click", () => {
-      copy(formatPoints(), "Key points copied.");
+      copy(formatPoints(),"Key points copied.");
     });
 
     el.transcript.addEventListener("input", () => {
@@ -805,21 +910,29 @@
       updateMeta();
     });
 
+    el.cleanView.addEventListener("click", () => {
+      setTranscriptMode("clean");
+    });
+
+    el.timedView.addEventListener("click", () => {
+      setTranscriptMode("timed");
+    });
+
     ["dragenter","dragover"].forEach(name => {
-      el.drop.addEventListener(name, event => {
+      el.drop.addEventListener(name,event => {
         event.preventDefault();
         el.drop.classList.add("drag");
       });
     });
 
     ["dragleave","drop"].forEach(name => {
-      el.drop.addEventListener(name, event => {
+      el.drop.addEventListener(name,event => {
         event.preventDefault();
         el.drop.classList.remove("drag");
       });
     });
 
-    el.drop.addEventListener("drop", event => {
+    el.drop.addEventListener("drop",event => {
       chooseFile(event.dataTransfer.files[0]);
     });
 
@@ -843,7 +956,7 @@
         return;
       }
 
-      setStatus("Checking the media file…", null, true);
+      setStatus("Checking the media file…",null,true);
 
       try {
         duration = await mediaDuration(selected);
@@ -853,12 +966,15 @@
         }
 
         if (duration > MAX_DURATION) {
-          throw new Error("The file is longer than 10 minutes.");
+          throw new Error(
+            "The file is longer than 10 minutes."
+          );
         }
 
         file = selected;
 
         el.fileName.textContent = selected.name;
+
         el.fileMeta.textContent =
           `${formatBytes(selected.size)} · ${clock(duration)}`;
 
@@ -880,7 +996,7 @@
       clearResults();
 
       try {
-        setStatus("Extracting audio…", null, true);
+        setStatus("Extracting audio…",null,true);
 
         const audio = await whisperAudio(file);
 
@@ -931,9 +1047,9 @@
           );
         }
 
-        setStatus("Transcribing the lesson…", null, true);
+        setStatus("Transcribing the lesson…",null,true);
 
-        const result = await transcriber(audio, {
+        const result = await transcriber(audio,{
           chunk_length_s:30,
           stride_length_s:5,
           return_timestamps:true
@@ -949,7 +1065,13 @@
           );
         }
 
-        el.transcript.value = timestamped(result);
+        transcriptViews = {
+          clean:cleanTranscript(rawText),
+          timed:compactTimestamps(result)
+        };
+
+        transcriptMode = "timed";
+        setTranscriptMode("clean",false);
 
         updateMeta();
         el.results.classList.add("show");
@@ -1026,8 +1148,7 @@
     }
 
     async function createStudyPack() {
-      rawText =
-        stripTimestamps(el.transcript.value);
+      rawText = stripTimestamps(el.transcript.value);
 
       if (words(rawText).length < 18) {
         toast("The transcript is too short.");
@@ -1044,84 +1165,97 @@
 
       el.study.disabled = true;
       el.study.textContent =
-        "Creating with local AI…";
+        "Creating better notes…";
 
       try {
-        if (!studyGenerator) {
-          setStatus(
-            "Downloading the English study AI…",
-            null,
-            true
-          );
+        setStatus(
+          "Finding the main ideas…",
+          20,
+          false
+        );
 
-          studyGenerator = await pipeline(
-            "text2text-generation",
-            STUDY_MODEL,
-            {
-              dtype:"q8",
+        const fallbackNotes =
+          smartRewritePoints(candidates);
 
-              progress_callback:data => {
-                if (
-                  data?.status !== "progress" ||
-                  typeof data.progress !== "number"
-                ) {
-                  return;
-                }
+        let generatedNotes = [];
 
-                const progress = Math.max(
-                  0,
-                  Math.min(
-                    100,
-                    Math.round(data.progress)
-                  )
-                );
+        try {
+          if (!studyGenerator) {
+            setStatus(
+              "Loading the English study model…",
+              null,
+              true
+            );
 
-                if (progress >= 100) {
-                  setStatus(
-                    "Study model file ready · preparing the remaining files…",
-                    null,
-                    true
+            studyGenerator = await pipeline(
+              "text2text-generation",
+              STUDY_MODEL,
+              {
+                dtype:"q8",
+
+                progress_callback:data => {
+                  if (
+                    data?.status !== "progress" ||
+                    typeof data.progress !== "number"
+                  ) {
+                    return;
+                  }
+
+                  const progress = Math.max(
+                    0,
+                    Math.min(
+                      100,
+                      Math.round(data.progress)
+                    )
                   );
-                } else {
-                  setStatus(
-                    "Downloading the English study AI…",
-                    progress,
-                    false
-                  );
+
+                  if (progress >= 100) {
+                    setStatus(
+                      "Study model file ready · preparing…",
+                      null,
+                      true
+                    );
+                  } else {
+                    setStatus(
+                      "Downloading the English study model…",
+                      progress,
+                      false
+                    );
+                  }
                 }
               }
-            }
-          );
-        }
+            );
+          }
 
-        const cards = [];
-
-        for (
-          let index = 0;
-          index < candidates.length;
-          index++
-        ) {
           setStatus(
-            `Creating study card ${index + 1} of ${candidates.length}…`,
-            Math.round(
-              (index / candidates.length) * 100
-            ),
+            "Rewriting the key ideas…",
+            55,
             false
           );
 
-          const card =
-            await generateStudyCard(
-              candidates[index],
-              index
-            );
-
-          cards.push(card);
+          generatedNotes =
+            await generateBetterNotes(candidates);
+        } catch (modelError) {
+          console.warn(
+            "Study model unavailable; using the local structured summarizer.",
+            modelError
+          );
         }
 
-        keyPoints =
-          cards.map(card => card.note);
+        keyPoints = mergeNotes(
+          generatedNotes,
+          fallbackNotes,
+          candidates
+        );
 
-        quizCards = cards;
+        pointTitles =
+          keyPoints.map(pointTitle);
+
+        quizCards =
+          buildQuizCards(
+            keyPoints,
+            pointTitles
+          );
 
         renderPoints();
         renderQuiz();
@@ -1135,35 +1269,12 @@
           false
         );
 
-        toast("AI study pack ready.");
+        toast("Study pack ready.");
       } catch (error) {
         console.error(error);
 
-        quizCards =
-          candidates.map((source,index) => {
-            return fallbackStudyCard(
-              source,
-              index
-            );
-          });
-
-        keyPoints =
-          quizCards.map(card => card.note);
-
-        renderPoints();
-        renderQuiz();
-
-        el.copyPoints.disabled =
-          !keyPoints.length;
-
-        setStatus(
-          "Study pack complete · compatibility mode.",
-          100,
-          false
-        );
-
-        toast(
-          "Study pack ready. Local AI fallback was used."
+        fail(
+          "The study pack could not be created. Try again."
         );
       } finally {
         el.study.disabled = false;
@@ -1171,231 +1282,400 @@
       }
     }
 
-    async function generateStudyCard(
-      source,
-      index
-    ) {
+    async function generateBetterNotes(candidates) {
+      const source = candidates
+        .map((fact,index) => {
+          return `${index + 1}. ${fact}`;
+        })
+        .join("\n");
+
       const prompt =
-`You are an English study assistant.
-Use only the source fact below.
-Do not invent information.
-Return exactly two lines.
-NOTE: Rewrite the fact as one clear concise study note of no more than 28 words. Keep important names and numbers.
-QUESTION: Write one specific question that is answered by the note. Do not include the answer in the question.
-SOURCE FACT: ${source}`;
+`Rewrite these English transcript facts into ${candidates.length} clear study notes.
+Combine context when needed.
+Remove first-person filler.
+Preserve names and numbers.
+Do not invent facts.
+Each note must be one sentence with no more than 24 words.
+Return only a numbered list.
+
+FACTS:
+${source}`;
 
       const output = await studyGenerator(
         prompt,
         {
-          max_new_tokens:96,
+          max_new_tokens:180,
           do_sample:false,
-          repetition_penalty:1.12
+          repetition_penalty:1.15
         }
       );
 
-      const generated =
+      const text =
         (output?.[0]?.generated_text || "")
           .trim();
 
-      const generatedNote =
-        field(generated,"NOTE");
-
-      const generatedQuestion =
-        field(generated,"QUESTION");
-
-      const safeNote =
-        validNote(generatedNote,source)
-          ? cleanSentence(generatedNote)
-          : conciseNote(source);
-
-      const safeQuestion =
-        validQuestion(generatedQuestion)
-          ? cleanQuestion(generatedQuestion)
-          : specificQuestion(
-              safeNote,
-              index
-            );
-
-      return {
-        note:safeNote,
-        question:safeQuestion,
-        answer:safeNote,
-        source
-      };
+      return parseGeneratedNotes(text);
     }
 
-    function field(text,label) {
-      const expression = new RegExp(
-        `${label}:\\s*([\\s\\S]*?)(?=\\s+(?:NOTE|QUESTION|ANSWER):|$)`,
-        "i"
-      );
+    function parseGeneratedNotes(text) {
+      let notes = text
+        .split(/\n+/)
+        .map(line => {
+          return line
+            .replace(
+              /^\s*(?:[-*•]|\d+[.)])\s*/,
+              ""
+            )
+            .trim();
+        })
+        .filter(Boolean);
 
-      const match =
-        text.match(expression);
-
-      return (
-        match?.[1]
-          ?.replace(/^[\-*\s]+/,"")
-          .trim() ||
-        ""
-      );
-    }
-
-    function validNote(note,source) {
-      if (
-        !note ||
-        words(note).length < 5 ||
-        words(note).length > 38 ||
-        /source fact|rewrite|question:/i.test(note)
-      ) {
-        return false;
+      if (notes.length < 2) {
+        notes = splitSentences(
+          text.replace(
+            /^\s*(?:[-*•]|\d+[.)])\s*/,
+            ""
+          )
+        );
       }
 
-      const sourceTerms =
-        new Set(
-          words(source).filter(word => {
-            return word.length > 4;
-          })
+      return notes
+        .map(cleanSentence)
+        .filter(note => {
+          return (
+            words(note).length >= 5 &&
+            words(note).length <= 32
+          );
+        })
+        .slice(0,5);
+    }
+
+    function mergeNotes(
+      generated,
+      fallback,
+      sources
+    ) {
+      return fallback.map((safe,index) => {
+        const candidate =
+          generated[index] || "";
+
+        if (
+          !candidate ||
+          /\b(?:i|we|our|you)\b/i.test(candidate)
+        ) {
+          return safe;
+        }
+
+        if (
+          words(candidate).length > 28 ||
+          similarity(
+            candidate,
+            sources[index] || ""
+          ) > .78
+        ) {
+          return safe;
+        }
+
+        const sourceTerms =
+          new Set(
+            words(sources.join(" "))
+              .filter(word => {
+                return word.length > 4;
+              })
+          );
+
+        const overlap =
+          words(candidate).filter(word => {
+            return sourceTerms.has(word);
+          }).length;
+
+        return overlap >= 2
+          ? candidate
+          : safe;
+      });
+    }
+
+    function smartRewritePoints(sources) {
+      let currentEntity = "";
+
+      return sources.map(source => {
+        const found = findEntity(source);
+
+        const note = rewriteKeyPoint(
+          source,
+          currentEntity || found
         );
 
-      const overlap =
-        words(note).filter(word => {
-          return sourceTerms.has(word);
-        }).length;
+        if (found) {
+          currentEntity = found;
+        }
 
-      return overlap >=
-        Math.min(2,sourceTerms.size);
+        return note;
+      });
     }
 
-    function validQuestion(question) {
-      return Boolean(
-        question &&
-        question.length >= 12 &&
-        question.length <= 180 &&
-        question.includes("?") &&
-        !/source fact|write one|question:/i
-          .test(question)
-      );
-    }
-
-    function conciseNote(source) {
-      let note = source
+    function rewriteKeyPoint(
+      source,
+      entity
+    ) {
+      let text = source
         .replace(
-          /^(?:well|so|now|basically|essentially|in other words|the important thing is(?: that)?|i am proud to share that|i'm proud to share that)\s*[,—:-]?\s*/i,
+          /^(?:well|so|now|basically|essentially|in other words|i am proud to share that|i'm proud to share that)\s*[,—:-]?\s*/i,
           ""
         )
         .trim();
 
-      note = note.replace(/\s+/g," ");
+      let match = text.match(
+        /we(?:'re| are)\s+open[- ]sourcing\s+(?:a\s+)?(.+?)\s+(?:that\s+we(?:'re| are)\s+calling|called)\s+([^,.]+)/i
+      );
 
-      if (words(note).length > 32) {
-        const cut = note
+      if (match) {
+        return cleanSentence(
+          `${match[2]} is a ${match[1]} being released as open source`
+        );
+      }
+
+      match = text.match(
+        /in the coming weeks,?\s*we(?:'re| are)\s+(?:also\s+)?going to open the weights for\s+([^,]+),?\s*(?:our|the)\s+([^,.]+)/i
+      );
+
+      if (match) {
+        return cleanSentence(
+          `${match[1]}'s model weights are planned for release in the coming weeks; it is ${match[2]}`
+        );
+      }
+
+      match = text.match(
+        /we(?:'re| are)\s+(?:also\s+)?working to make sure that\s+(?:that\s+)?everyone has\s+(.+)/i
+      );
+
+      if (match) {
+        return cleanSentence(
+          `The stated goal is to give everyone ${match[1].replace(/\byour\s+/gi,"")}`
+        );
+      }
+
+      match = text.match(
+        /you can use (?:our|the) latest models in (?:the\s+)?(.+?)(?:,\s*and|\.|$)/i
+      );
+
+      if (match) {
+        return cleanSentence(
+          `The latest models are available in the ${match[1]}`
+        );
+      }
+
+      if (entity) {
+        text = text.replace(
+          /^it(?:'s| is)\s+/i,
+          `${entity} is `
+        );
+      }
+
+      text = text.replace(
+        /\b(\d+)\s+(billion|million)\s+(parameter)\b/gi,
+        "$1-$2-$3"
+      );
+
+      text = text
+        .replace(
+          /\byour laptop\b/gi,
+          "laptops"
+        )
+        .replace(
+          /\band it(?:'s| is)\b/gi,
+          "and is"
+        );
+
+      text = text
+        .replace(
+          /^we(?:'re| are) going to\s+/i,
+          "The team plans to "
+        )
+        .replace(
+          /^we(?:'re| are)\s+/i,
+          "The team is "
+        );
+
+      text = text
+        .replace(
+          /^you can\s+/i,
+          "Users can "
+        )
+        .replace(
+          /\bour\b/gi,
+          "the team's"
+        );
+
+      text = text.replace(/\s+/g," ");
+
+      if (words(text).length > 30) {
+        const cut = text
           .split(
-            /;|—|\s+and\s+(?=(?:it|this|they|we|the)\b)/i
+            /;|—|\s+and\s+(?=(?:it|this|they|we|the|i)\b)/i
           )[0]
           .trim();
 
-        if (words(cut).length >= 8) {
-          note = cut;
-        } else {
-          note = note
-            .split(/\s+/)
-            .slice(0,32)
-            .join(" ")
-            .replace(/[,;:]$/,"");
-        }
+        text =
+          words(cut).length >= 8
+            ? cut
+            : text
+                .split(/\s+/)
+                .slice(0,30)
+                .join(" ");
       }
 
-      return cleanSentence(note);
+      return cleanSentence(text);
     }
 
-    function specificQuestion(note,index) {
-      const clean =
-        note.replace(/[.!?]+$/,"");
-
-      const isMatch =
-        clean.match(
-          /^(.{3,70}?)\s+(?:is|are|was|were)\s+(.+)$/i
-        );
-
-      if (isMatch) {
-        return (
-          "What does the lesson explain about " +
-          `${shortSubject(isMatch[1])}?`
-        );
-      }
-
-      const canMatch =
-        clean.match(
-          /^(.{3,70}?)\s+(can|could)\s+(.+)$/i
-        );
-
-      if (canMatch) {
-        return (
-          `What ${canMatch[2].toLowerCase()} ` +
-          `${shortSubject(canMatch[1])} do?`
-        );
-      }
-
-      const willMatch =
-        clean.match(
-          /^(.{3,70}?)\s+(?:will|is going to|are going to)\s+(.+)$/i
-        );
-
-      if (willMatch) {
-        return (
-          "What is planned or expected for " +
-          `${shortSubject(willMatch[1])}?`
-        );
-      }
-
-      const number =
-        clean.match(
-          /\b\d[\d,.]*(?:\s*(?:billion|million|thousand|%|percent|hours?|minutes?|parameters?))?\b/i
-        );
-
-      if (number) {
-        return (
-          "What important specification involving " +
-          `${number[0]} is mentioned?`
-        );
-      }
-
-      const subjects =
-        importantTerms(clean)
-          .slice(0,2)
-          .join(" and ");
-
-      const starters = [
-        "What key fact does the lesson give about",
-        "What change is described concerning",
-        "What should a student remember about",
-        "What main claim is made about",
-        "How does the lesson describe"
-      ];
+    function findEntity(text) {
+      const matches =
+        text.match(
+          /\b(?:[A-Z][a-zA-Z0-9.-]+(?:\s+[A-Z][a-zA-Z0-9.-]+){1,3})\b/g
+        ) || [];
 
       return (
-        `${starters[index % starters.length]} ` +
-        `${subjects || "this topic"}?`
+        matches.find(value => {
+          return !/^(?:In The|I Am|The Team|Coming Weeks)$/i
+            .test(value);
+        }) || ""
       );
     }
 
-    function fallbackStudyCard(
-      source,
-      index
-    ) {
-      const note =
-        conciseNote(source);
+    function pointTitle(note) {
+      if (
+        /open source|open-sourc|announc|launch|introduc|new class/i
+          .test(note)
+      ) {
+        return "Announcement";
+      }
 
-      return {
-        note,
-        question:specificQuestion(
-          note,
-          index
-        ),
-        answer:note,
-        source
+      if (
+        /coming weeks|coming soon|planned|will release|next/i
+          .test(note)
+      ) {
+        return "Upcoming release";
+      }
+
+      if (
+        /goal|aim|working to|vision|everyone/i
+          .test(note)
+      ) {
+        return "Main goal";
+      }
+
+      if (
+        /available|access|app|use the|users can/i
+          .test(note)
+      ) {
+        return "Availability";
+      }
+
+      if (
+        /health|career|finance|relationship|benefit|improve/i
+          .test(note)
+      ) {
+        return "Use cases";
+      }
+
+      if (
+        /\b\d[\d,.]*|parameter|performance|size|runs? on|technical/i
+          .test(note)
+      ) {
+        return "Key specification";
+      }
+
+      return "Core idea";
+    }
+
+    function buildQuizCards(
+      points,
+      titles
+    ) {
+      return points.map((answer,index) => {
+        const alternatives =
+          points
+            .filter((_,itemIndex) => {
+              return itemIndex !== index;
+            })
+            .slice(0,3);
+
+        const choices = shuffle(
+          [answer,...alternatives],
+          index + 11
+        );
+
+        return {
+          question:quizQuestion(
+            titles[index]
+          ),
+          answer,
+          choices
+        };
+      });
+    }
+
+    function quizQuestion(title) {
+      const questions = {
+        "Announcement":
+          "Which statement best describes the main announcement?",
+
+        "Key specification":
+          "Which statement gives the key technical specification?",
+
+        "Upcoming release":
+          "What upcoming release or change does the lesson mention?",
+
+        "Main goal":
+          "Which statement describes the main long-term goal?",
+
+        "Availability":
+          "Which statement explains where or how the technology can be used?",
+
+        "Use cases":
+          "Which statement describes the highlighted uses or benefits?",
+
+        "Core idea":
+          "Which statement best captures this key idea?"
       };
+
+      return (
+        questions[title] ||
+        questions["Core idea"]
+      );
+    }
+
+    function shuffle(items,seed) {
+      const result = [...items];
+
+      let value =
+        seed * 9301 + 49297;
+
+      for (
+        let index = result.length - 1;
+        index > 0;
+        index--
+      ) {
+        value =
+          (value * 9301 + 49297) %
+          233280;
+
+        const destination =
+          Math.floor(
+            (value / 233280) *
+            (index + 1)
+          );
+
+        [
+          result[index],
+          result[destination]
+        ] = [
+          result[destination],
+          result[index]
+        ];
+      }
+
+      return result;
     }
 
     function cleanSentence(text) {
@@ -1410,62 +1690,10 @@ SOURCE FACT: ${source}`;
 
       return (
         clean[0].toUpperCase() +
-        clean.slice(1).replace(/[.!?]*$/,".")
+        clean
+          .slice(1)
+          .replace(/[.!?]*$/,".")
       );
-    }
-
-    function cleanQuestion(text) {
-      const clean = text
-        .replace(/^["']|["']$/g,"")
-        .replace(/\s+/g," ")
-        .replace(/[.!?]+$/,"")
-        .trim();
-
-      if (!clean) {
-        return clean;
-      }
-
-      return (
-        clean[0].toUpperCase() +
-        clean.slice(1) +
-        "?"
-      );
-    }
-
-    function shortSubject(text) {
-      return text
-        .replace(
-          /^(?:and|but|that|this|the fact that)\s+/i,
-          ""
-        )
-        .trim()
-        .split(/\s+/)
-        .slice(0,9)
-        .join(" ");
-    }
-
-    function importantTerms(text) {
-      const stop = new Set(
-        (
-          "the a an and or but to of in on for with " +
-          "at by from is are was were be been it this " +
-          "that these those i you he she we they as so " +
-          "do does did have has had can could would " +
-          "should just also more some into about their " +
-          "our your its"
-        ).split(" ")
-      );
-
-      const seen = new Set();
-
-      return words(text).filter(word => {
-        return (
-          word.length > 3 &&
-          !stop.has(word) &&
-          !seen.has(word) &&
-          seen.add(word)
-        );
-      });
     }
 
     function extractPoints(text,maximum) {
@@ -1592,8 +1820,22 @@ SOURCE FACT: ${source}`;
           String(index + 1)
             .padStart(2,"0");
 
-        item.textContent = point;
+        const title =
+          document.createElement("span");
 
+        title.className = "point-title";
+
+        title.textContent =
+          pointTitles[index] ||
+          "Core idea";
+
+        const text =
+          document.createElement("span");
+
+        text.className = "point-text";
+        text.textContent = point;
+
+        item.append(title,text);
         el.points.appendChild(item);
       });
     }
@@ -1616,6 +1858,7 @@ SOURCE FACT: ${source}`;
             document.createElement("div");
 
           label.className = "q-label";
+
           label.textContent =
             `Question ${index + 1}`;
 
@@ -1626,44 +1869,136 @@ SOURCE FACT: ${source}`;
           title.textContent =
             item.question;
 
-          const button =
-            document.createElement("button");
-
-          button.className =
-            "ghost small";
-
-          button.textContent =
-            "Show answer";
-
-          const answer =
+          const choices =
             document.createElement("div");
 
-          answer.className = "answer";
-          answer.textContent =
-            item.answer;
+          choices.className = "choices";
 
-          button.addEventListener(
-            "click",
-            () => {
-              answer.classList.add("show");
-              button.disabled = true;
-              button.textContent =
-                "Answer revealed";
+          const feedback =
+            document.createElement("div");
+
+          feedback.className = "feedback";
+
+          item.choices.forEach(
+            (choice,choiceIndex) => {
+              const button =
+                document.createElement("button");
+
+              button.className = "choice";
+              button.type = "button";
+
+              const letter =
+                document.createElement("span");
+
+              letter.className =
+                "choice-letter";
+
+              letter.textContent =
+                String.fromCharCode(
+                  65 + choiceIndex
+                );
+
+              const text =
+                document.createElement("span");
+
+              text.textContent = choice;
+
+              button.append(letter,text);
+
+              button.addEventListener(
+                "click",
+                () => {
+                  gradeQuiz(
+                    choices,
+                    button,
+                    choice,
+                    item.answer,
+                    feedback
+                  );
+                }
+              );
+
+              choices.appendChild(button);
             }
           );
 
           card.append(
             label,
             title,
-            button,
-            answer
+            choices,
+            feedback
           );
 
           el.quiz.appendChild(card);
         });
     }
 
-    function timestamped(result) {
+    function gradeQuiz(
+      container,
+      selected,
+      choice,
+      correct,
+      feedback
+    ) {
+      const buttons = [
+        ...container.querySelectorAll("button")
+      ];
+
+      buttons.forEach(button => {
+        button.disabled = true;
+
+        const value =
+          button.querySelector(
+            "span:last-child"
+          )?.textContent || "";
+
+        if (value === correct) {
+          button.classList.add("correct");
+        } else if (button === selected) {
+          button.classList.add("wrong");
+        } else {
+          button.classList.add("neutral");
+        }
+      });
+
+      const right =
+        choice === correct;
+
+      feedback.className =
+        `feedback show${right ? "" : " bad"}`;
+
+      feedback.textContent =
+        right
+          ? `Correct — ${correct}`
+          : `Not quite. Correct answer: ${correct}`;
+    }
+
+    function cleanTranscript(text) {
+      const sentences =
+        splitSentences(text);
+
+      if (!sentences.length) {
+        return text;
+      }
+
+      const paragraphs = [];
+
+      for (
+        let index = 0;
+        index < sentences.length;
+        index += 2
+      ) {
+        paragraphs.push(
+          sentences
+            .slice(index,index + 2)
+            .join(" ")
+        );
+      }
+
+      return paragraphs.join("\n\n");
+    }
+
+    function compactTimestamps(result) {
       if (!result.chunks?.length) {
         return result.text || "";
       }
@@ -1675,23 +2010,55 @@ SOURCE FACT: ${source}`;
               chunk.timestamp?.[0] || 0
             );
 
-          const end =
-            typeof chunk.timestamp?.[1] === "number"
-              ? clock(chunk.timestamp[1])
-              : "--:--";
-
           return (
-            `[${start} – ${end}]\n` +
+            `${start}  ` +
             `${(chunk.text || "").trim()}`
           );
         })
-        .join("\n\n");
+        .join("\n");
+    }
+
+    function setTranscriptMode(
+      mode,
+      saveCurrent = true
+    ) {
+      if (saveCurrent) {
+        transcriptViews[transcriptMode] =
+          el.transcript.value;
+      }
+
+      transcriptMode = mode;
+
+      el.transcript.value =
+        transcriptViews[mode] || "";
+
+      el.title.textContent =
+        mode === "clean"
+          ? "Clean transcript"
+          : "Timestamped transcript";
+
+      el.cleanView.classList.toggle(
+        "active",
+        mode === "clean"
+      );
+
+      el.timedView.classList.toggle(
+        "active",
+        mode === "timed"
+      );
+
+      rawText =
+        stripTimestamps(
+          el.transcript.value
+        );
+
+      updateMeta();
     }
 
     function stripTimestamps(text) {
       return text
         .replace(
-          /^\s*\[\d{1,3}:\d{2}\s*[–-]\s*(?:\d{1,3}:\d{2}|--:--)\]\s*/gm,
+          /^\s*(?:\[\d{1,3}:\d{2}\s*[–-]\s*(?:\d{1,3}:\d{2}|--:--)\]|\d{1,3}:\d{2})\s*/gm,
           ""
         )
         .replace(/\s+/g," ")
@@ -1754,7 +2121,14 @@ SOURCE FACT: ${source}`;
     function formatPoints() {
       return keyPoints
         .map((point,index) => {
-          return `${index + 1}. ${point}`;
+          const title =
+            pointTitles[index] ||
+            "Core idea";
+
+          return (
+            `${index + 1}. ${title}\n` +
+            `${point}`
+          );
         })
         .join("\n\n");
     }
@@ -1869,7 +2243,7 @@ SOURCE FACT: ${source}`;
           .test(message)
       ) {
         return (
-          "The Whisper model could not download. " +
+          "The AI model could not download. " +
           "Check your internet and refresh the page."
         );
       }
@@ -1887,6 +2261,7 @@ SOURCE FACT: ${source}`;
 
     function clearStudyPack() {
       keyPoints = [];
+      pointTitles = [];
       quizCards = [];
 
       el.points.replaceChildren();
@@ -1900,6 +2275,7 @@ SOURCE FACT: ${source}`;
     function clearResults() {
       rawText = "";
       el.transcript.value = "";
+
       el.results.classList.remove("show");
 
       clearStudyPack();
@@ -1908,6 +2284,13 @@ SOURCE FACT: ${source}`;
     function reset(scroll = true) {
       file = null;
       duration = 0;
+
+      transcriptViews = {
+        clean:"",
+        timed:""
+      };
+
+      transcriptMode = "clean";
 
       el.input.value = "";
       el.file.classList.remove("show");
@@ -1973,11 +2356,14 @@ SOURCE FACT: ${source}`;
 
         textarea.value = text;
 
-        document.body
-          .appendChild(textarea);
+        document.body.appendChild(
+          textarea
+        );
 
         textarea.select();
+
         document.execCommand("copy");
+
         textarea.remove();
       }
 
