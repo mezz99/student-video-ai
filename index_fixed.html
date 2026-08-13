@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111714">
+  <meta name="description" content="Turn lesson videos into private, on-device transcripts, key points, and revision quizzes.">
+  <title>Student Video AI</title>
+
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #102019;
+      --muted: #5d6b64;
+      --paper: #f5f3ec;
+      --card: #fffef9;
+      --line: #dcded6;
+      --accent: #ff6b35;
+      --accent-dark: #d94b1b;
+      --mint: #c8f560;
+      --dark: #111714;
+      --success: #147a4b;
+      --danger: #b72e2e;
+      --shadow: 0 24px 70px rgba(28, 35, 30, 0.12);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(200, 245, 96, 0.28), transparent 28rem),
+        radial-gradient(circle at 100% 18%, rgba(255, 107, 53, 0.16), transparent 30rem),
+        var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button, label[for="fileInput"], select { touch-action: manipulation; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, label[for="fileInput"]:focus-visible {
+      outline: 3px solid rgba(255, 107, 53, 0.32);
+      outline-offset: 3px;
+    }
+
+    .shell {
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 0;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      font-weight: 850;
+      letter-spacing: -0.03em;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--dark);
+      color: var(--mint);
+      font-size: 14px;
+      box-shadow: 4px 4px 0 var(--accent);
+    }
+
+    .local-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(16, 32, 25, 0.13);
+      border-radius: 999px;
+      background: rgba(255, 254, 249, 0.72);
+      padding: 8px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      backdrop-filter: blur(12px);
+    }
+
+    .local-pill::before {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      content: "";
+      box-shadow: 0 0 0 4px rgba(20, 122, 75, 0.12);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.28fr 0.72fr;
+      align-items: end;
+      gap: 42px;
+      padding: 52px 0 38px;
+    }
+
+    .eyebrow, .step-label {
+      margin: 0 0 12px;
+      color: var(--accent-dark);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 790px;
+      margin: 0;
+      font-size: clamp(44px, 7.6vw, 88px);
+      font-weight: 900;
+      letter-spacing: -0.072em;
+      line-height: 0.92;
+    }
+
+    h1 span {
+      position: relative;
+      display: inline-block;
+      z-index: 0;
+    }
+
+    h1 span::after {
+      position: absolute;
+      right: -0.04em;
+      bottom: 0.06em;
+      left: -0.03em;
+      height: 0.23em;
+      background: var(--mint);
+      content: "";
+      transform: rotate(-1.2deg);
+      z-index: -1;
+    }
+
+    .hero-copy {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 20px);
+    }
+
+    .proof-list {
+      display: grid;
+      gap: 12px;
+      margin: 22px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .proof-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .check {
+      display: grid;
+      flex: 0 0 auto;
+      width: 24px;
+      height: 24px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--dark);
+      color: var(--mint);
+      font-size: 12px;
+    }
+
+    .workspace {
+      margin: 22px 0 72px;
+      overflow: hidden;
+      border: 1px solid rgba(16, 32, 25, 0.1);
+      border-radius: 30px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .panel { padding: clamp(24px, 5vw, 54px); }
+
+    .panel + .panel { border-top: 1px solid var(--line); }
+
+    .panel-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    h2, h3 { margin: 0; letter-spacing: -0.035em; }
+    h2 { font-size: clamp(26px, 4vw, 38px); }
+    h3 { font-size: 22px; }
+
+    .hint {
+      max-width: 520px;
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .drop-zone {
+      display: grid;
+      min-height: 220px;
+      place-items: center;
+      border: 2px dashed #bec3b8;
+      border-radius: 22px;
+      background: linear-gradient(145deg, rgba(200, 245, 96, 0.09), rgba(255, 107, 53, 0.04));
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+    }
+
+    .drop-zone:hover, .drop-zone.is-dragging {
+      border-color: var(--accent);
+      background: rgba(255, 107, 53, 0.07);
+      transform: translateY(-2px);
+    }
+
+    .upload-icon {
+      display: grid;
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 15px;
+      place-items: center;
+      border-radius: 18px;
+      background: var(--dark);
+      color: white;
+      font-size: 24px;
+    }
+
+    .drop-title { display: block; font-size: 18px; font-weight: 850; }
+    .drop-help { display: block; margin-top: 7px; color: var(--muted); font-size: 13px; }
+    #fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+    .file-card {
+      display: none;
+      align-items: center;
+      gap: 14px;
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 16px;
+      background: #fafaf5;
+    }
+
+    .file-card.is-visible { display: flex; }
+    .file-icon { font-size: 24px; }
+    .file-info { min-width: 0; flex: 1; }
+    .file-name { overflow: hidden; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+    .file-meta { margin-top: 2px; color: var(--muted); font-size: 12px; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .field label {
+      display: block;
+      margin: 0 0 7px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    select {
+      width: 100%;
+      border: 1px solid #cdd1c8;
+      border-radius: 12px;
+      background: white;
+      padding: 12px 40px 12px 13px;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border: 0;
+      border-radius: 13px;
+      padding: 12px 18px;
+      font-weight: 850;
+      cursor: pointer;
+      transition: transform 150ms ease, opacity 150ms ease, box-shadow 150ms ease;
+    }
+
+    .button:hover:not(:disabled) { transform: translateY(-2px); }
+    .button:disabled { cursor: not-allowed; opacity: 0.42; }
+    .button-primary { background: var(--accent); color: #1d0c04; box-shadow: 0 8px 0 #cf4314; }
+    .button-primary:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 4px 0 #cf4314; }
+    .button-dark { background: var(--dark); color: white; }
+    .button-ghost { border: 1px solid var(--line); background: transparent; color: var(--ink); }
+    .button-small { min-height: 38px; padding: 8px 12px; font-size: 13px; }
+
+    .status-wrap {
+      display: none;
+      margin-top: 22px;
+      border-radius: 15px;
+      background: var(--dark);
+      padding: 16px;
+      color: white;
+    }
+
+    .status-wrap.is-visible { display: block; }
+    .status-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .status-text { font-size: 14px; font-weight: 750; }
+    .status-percent { color: var(--mint); font-size: 13px; font-weight: 900; }
+
+    .progress-track {
+      height: 8px;
+      overflow: hidden;
+      margin-top: 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.13);
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--mint), #68e0b0);
+      transition: width 180ms ease;
+    }
+
+    .progress-bar.is-indeterminate { width: 38%; animation: loading 1.2s ease-in-out infinite; }
+    @keyframes loading { from { transform: translateX(-110%); } to { transform: translateX(280%); } }
+
+    .privacy-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .results { display: none; }
+    .results.is-visible { display: block; }
+
+    .result-block + .result-block { margin-top: 38px; padding-top: 38px; border-top: 1px solid var(--line); }
+
+    .result-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .result-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+    .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+    .tag { border-radius: 999px; background: #eef0e8; padding: 5px 9px; color: var(--muted); font-size: 11px; font-weight: 800; }
+
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      border: 1px solid #cdd1c8;
+      border-radius: 16px;
+      background: #fcfcf7;
+      padding: 18px;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .edit-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+
+    .key-points {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .key-points li {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fcfcf7;
+      padding: 15px 15px 15px 48px;
+    }
+
+    .key-points li::before {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      display: grid;
+      width: 25px;
+      height: 25px;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--mint);
+      color: var(--dark);
+      content: attr(data-number);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .quiz-grid { display: grid; gap: 16px; }
+
+    .question {
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: #fcfcf7;
+      padding: 18px;
+    }
+
+    .question-label { color: var(--accent-dark); font-size: 11px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+    .question-title { margin: 7px 0 15px; font-weight: 760; white-space: pre-line; }
+    .answers { display: grid; gap: 8px; }
+
+    .answer {
+      width: 100%;
+      border: 1px solid #cdd1c8;
+      border-radius: 11px;
+      background: white;
+      padding: 11px 13px;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .answer:hover:not(:disabled) { border-color: var(--accent); }
+    .answer.correct { border-color: var(--success); background: #e7f7ee; color: #0d613a; font-weight: 800; }
+    .answer.wrong { border-color: #db9a9a; background: #fbecec; color: var(--danger); }
+    .answer:disabled { cursor: default; }
+    .question-result { min-height: 21px; margin-top: 10px; font-size: 13px; font-weight: 800; }
+
+    .reveal-answer {
+      display: none;
+      margin-top: 10px;
+      border-left: 3px solid var(--mint);
+      padding: 8px 10px;
+      background: #f2f7e8;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .reveal-answer.is-visible { display: block; }
+    .quiz-score { display: none; margin: 0 0 16px; border-radius: 13px; background: var(--dark); padding: 13px 15px; color: white; font-weight: 800; }
+    .quiz-score.is-visible { display: block; }
+
+    .empty-state {
+      border: 1px dashed #c7cbc1;
+      border-radius: 15px;
+      padding: 20px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-top: 1px solid rgba(16, 32, 25, 0.13);
+      padding: 24px 0 34px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 10;
+      max-width: min(360px, calc(100% - 36px));
+      border-radius: 13px;
+      background: var(--dark);
+      padding: 12px 15px;
+      color: white;
+      font-size: 13px;
+      font-weight: 750;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px);
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .toast.is-visible { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 760px) {
+      .hero { grid-template-columns: 1fr; gap: 22px; padding-top: 34px; }
+      .hero-copy { max-width: 620px; }
+      .panel-heading, .result-heading { display: block; }
+      .result-actions { justify-content: flex-start; margin-top: 12px; }
+      .controls { grid-template-columns: 1fr; }
+      .footer { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media (max-width: 460px) {
+      .shell { width: min(100% - 20px, 1080px); }
+      .local-pill { padding: 7px 9px; font-size: 11px; }
+      .workspace { border-radius: 22px; }
+      .panel { padding: 22px 17px; }
+      .drop-zone { min-height: 190px; padding: 20px 14px; }
+      .button { width: 100%; }
+      .result-actions .button { width: auto; }
+      h1 { font-size: clamp(42px, 15vw, 64px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="shell topbar">
+    <div class="brand">
+      <span class="brand-mark">SV</span>
+      <span>Student Video AI</span>
+    </div>
+    <div class="local-pill">Runs on your device</div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="pageTitle">
+      <div>
+        <p class="eyebrow">Free local AI study tool</p>
+        <h1 id="pageTitle">Turn videos into <span>study notes.</span></h1>
+      </div>
+      <div>
+        <p class="hero-copy">Upload a lesson. Get a timestamped transcript, the key ideas, and a revision quiz—without sending the video to a server.</p>
+        <ul class="proof-list">
+          <li><span class="check">✓</span> No account or API key</li>
+          <li><span class="check">✓</span> English, Darija/Arabic, French &amp; more</li>
+          <li><span class="check">✓</span> Copy or download every result</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="workspace" aria-label="Video study workspace">
+      <div class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="step-label">Step 1</p>
+            <h2>Add your lesson</h2>
+            <p class="hint">For the smoothest result, use a clear video or audio file up to 10 minutes and 100 MB.</p>
+          </div>
+        </div>
+
+        <label class="drop-zone" id="dropZone" for="fileInput" tabindex="0">
+          <span>
+            <span class="upload-icon" aria-hidden="true">↑</span>
+            <span class="drop-title">Choose a video or drop it here</span>
+            <span class="drop-help">MP4, MOV, WebM, MP3, M4A or WAV</span>
+          </span>
+        </label>
+        <input type="file" id="fileInput" accept="video/*,audio/*">
+
+        <div class="file-card" id="fileCard">
+          <span class="file-icon" aria-hidden="true">🎬</span>
+          <div class="file-info">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-meta" id="fileMeta"></div>
+          </div>
+          <button class="button button-ghost button-small" id="removeFileButton" type="button">Remove</button>
+        </div>
+
+        <div class="controls">
+          <div class="field">
+            <label for="languageSelect">Spoken language</label>
+            <select id="languageSelect">
+              <option value="auto">Auto-detect</option>
+              <option value="english">English</option>
+              <option value="arabic">Darija / Arabic</option>
+              <option value="french">French</option>
+              <option value="spanish">Spanish</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="qualitySelect">Transcription quality</label>
+            <select id="qualitySelect">
+              <option value="fast">Fast — best for phones</option>
+              <option value="better">Better — best for laptops</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="button button-primary" id="transcribeButton" type="button" disabled>
+            <span aria-hidden="true">✦</span> Generate transcript
+          </button>
+        </div>
+
+        <div class="status-wrap" id="statusWrap" role="status" aria-live="polite">
+          <div class="status-row">
+            <span class="status-text" id="statusText">Ready.</span>
+            <span class="status-percent" id="statusPercent"></span>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+        </div>
+
+        <p class="privacy-note"><span aria-hidden="true">🔒</span><span>Your media stays in this browser. The first run downloads the AI model; your file itself is never uploaded by this page.</span></p>
+      </div>
+
+      <div class="panel results" id="resultsPanel">
+        <div class="panel-heading">
+          <div>
+            <p class="step-label">Step 2</p>
+            <h2>Review your transcript</h2>
+            <p class="hint">Correct any names or numbers before creating the study pack. Your edits will be used.</p>
+          </div>
+          <button class="button button-ghost button-small" id="startOverButton" type="button">Start over</button>
+        </div>
+
+        <section class="result-block" aria-labelledby="transcriptTitle">
+          <div class="result-heading">
+            <div>
+              <h3 id="transcriptTitle">Timestamped transcript</h3>
+              <div class="meta-row">
+                <span class="tag" id="wordCountTag">0 words</span>
+                <span class="tag" id="durationTag">0:00</span>
+                <span class="tag" id="languageTag">Auto-detect</span>
+              </div>
+            </div>
+            <div class="result-actions">
+              <button class="button button-ghost button-small" id="copyTranscriptButton" type="button">Copy</button>
+              <button class="button button-ghost button-small" id="downloadTranscriptButton" type="button">Download .txt</button>
+            </div>
+          </div>
+
+          <textarea id="transcriptOutput" aria-label="Editable timestamped transcript" spellcheck="true"></textarea>
+          <p class="edit-note">Tip: edit the plain words, but keep the timestamps if you want them in the download.</p>
+
+          <div class="actions">
+            <button class="button button-dark" id="studyPackButton" type="button">
+              <span aria-hidden="true">✦</span> Create study pack
+            </button>
+          </div>
+        </section>
+
+        <section class="result-block" id="notesBlock" aria-labelledby="keyPointsTitle">
+          <div class="result-heading">
+            <div>
+              <h3 id="keyPointsTitle">Key points</h3>
+              <p class="hint">The most useful ideas, selected locally from your transcript.</p>
+            </div>
+            <div class="result-actions">
+              <button class="button button-ghost button-small" id="copyNotesButton" type="button" disabled>Copy</button>
+              <button class="button button-ghost button-small" id="downloadPackButton" type="button" disabled>Download study pack</button>
+            </div>
+          </div>
+          <div class="empty-state" id="notesEmpty">Create the study pack to see the most important points.</div>
+          <ol class="key-points" id="keyPointsList"></ol>
+        </section>
+
+        <section class="result-block" id="quizBlock" aria-labelledby="quizTitle">
+          <div class="result-heading">
+            <div>
+              <h3 id="quizTitle">Revision quiz</h3>
+              <p class="hint">Answer from memory, then check the exact statement from the lesson.</p>
+            </div>
+            <div class="result-actions">
+              <button class="button button-ghost button-small" id="retryQuizButton" type="button" disabled>Retry quiz</button>
+            </div>
+          </div>
+          <div class="quiz-score" id="quizScore"></div>
+          <div class="empty-state" id="quizEmpty">Your quiz will appear here with the study pack.</div>
+          <div class="quiz-grid" id="quizContainer"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    <span>Student Video AI · Free educational experiment</span>
+    <span>No uploads · No accounts · No stored videos</span>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module">
+    import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2";
+
+    const MAX_SIZE = 100 * 1024 * 1024;
+    const MAX_DURATION = 10 * 60;
+    const MODELS = {
+      fast: "Xenova/whisper-tiny",
+      better: "Xenova/whisper-base"
+    };
+
+    if (typeof pipeline !== "function") {
+      throw new Error("The AI engine could not load. Refresh the page and try again.");
+    }
+
+    const elements = {
+      fileInput: document.getElementById("fileInput"),
+      dropZone: document.getElementById("dropZone"),
+      fileCard: document.getElementById("fileCard"),
+      fileName: document.getElementById("fileName"),
+      fileMeta: document.getElementById("fileMeta"),
+      removeFileButton: document.getElementById("removeFileButton"),
+      languageSelect: document.getElementById("languageSelect"),
+      qualitySelect: document.getElementById("qualitySelect"),
+      transcribeButton: document.getElementById("transcribeButton"),
+      statusWrap: document.getElementById("statusWrap"),
+      statusText: document.getElementById("statusText"),
+      statusPercent: document.getElementById("statusPercent"),
+      progressBar: document.getElementById("progressBar"),
+      resultsPanel: document.getElementById("resultsPanel"),
+      startOverButton: document.getElementById("startOverButton"),
+      transcriptOutput: document.getElementById("transcriptOutput"),
+      wordCountTag: document.getElementById("wordCountTag"),
+      durationTag: document.getElementById("durationTag"),
+      languageTag: document.getElementById("languageTag"),
+      copyTranscriptButton: document.getElementById("copyTranscriptButton"),
+      downloadTranscriptButton: document.getElementById("downloadTranscriptButton"),
+      studyPackButton: document.getElementById("studyPackButton"),
+      notesEmpty: document.getElementById("notesEmpty"),
+      keyPointsList: document.getElementById("keyPointsList"),
+      copyNotesButton: document.getElementById("copyNotesButton"),
+      downloadPackButton: document.getElementById("downloadPackButton"),
+      quizEmpty: document.getElementById("quizEmpty"),
+      quizContainer: document.getElementById("quizContainer"),
+      quizScore: document.getElementById("quizScore"),
+      retryQuizButton: document.getElementById("retryQuizButton"),
+      toast: document.getElementById("toast")
+    };
+
+    let selectedFile = null;
+    let mediaDuration = 0;
+    let transcriber = null;
+    let loadedModelId = "";
+    let rawTranscript = "";
+    let timestampedTranscript = "";
+    let currentKeyPoints = [];
+    let currentQuestions = [];
+    let answeredQuestions = 0;
+    let correctAnswers = 0;
+    let toastTimer = null;
+
+    elements.fileInput.addEventListener("change", () => handleFile(elements.fileInput.files?.[0]));
+    elements.removeFileButton.addEventListener("click", resetAll);
+    elements.startOverButton.addEventListener("click", resetAll);
+    elements.transcribeButton.addEventListener("click", transcribeSelectedFile);
+    elements.studyPackButton.addEventListener("click", createStudyPack);
+    elements.copyTranscriptButton.addEventListener("click", () => copyText(elements.transcriptOutput.value, "Transcript copied."));
+    elements.downloadTranscriptButton.addEventListener("click", () => downloadText("student-video-transcript.txt", elements.transcriptOutput.value));
+    elements.copyNotesButton.addEventListener("click", () => copyText(formatNotes(), "Key points copied."));
+    elements.downloadPackButton.addEventListener("click", downloadStudyPack);
+    elements.retryQuizButton.addEventListener("click", () => renderQuiz(currentQuestions));
+    elements.transcriptOutput.addEventListener("input", updateTranscriptFromEditor);
+
+    elements.dropZone.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        elements.fileInput.click();
+      }
+    });
+
+    for (const eventName of ["dragenter", "dragover"]) {
+      elements.dropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        elements.dropZone.classList.add("is-dragging");
+      });
+    }
+
+    for (const eventName of ["dragleave", "drop"]) {
+      elements.dropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        elements.dropZone.classList.remove("is-dragging");
+      });
+    }
+
+    elements.dropZone.addEventListener("drop", event => {
+      const file = event.dataTransfer?.files?.[0];
+      if (file) handleFile(file);
+    });
+
+    async function handleFile(file) {
+      clearGeneratedResults();
+
+      if (!file) return;
+      if (!file.type.startsWith("video/") && !file.type.startsWith("audio/")) {
+        showError("Choose a video or audio file.");
+        return;
+      }
+      if (file.size > MAX_SIZE) {
+        showError("This file is over 100 MB. Compress or trim it first.");
+        return;
+      }
+
+      setStatus("Checking the media file…", { indeterminate: true });
+
+      try {
+        const duration = await getMediaDuration(file);
+        if (!Number.isFinite(duration) || duration <= 0) throw new Error("Could not read the media duration.");
+        if (duration > MAX_DURATION) throw new Error("This file is longer than 10 minutes. Trim it first.");
+
+        selectedFile = file;
+        mediaDuration = duration;
+        elements.fileName.textContent = file.name;
+        elements.fileMeta.textContent = `${formatBytes(file.size)} · ${formatClock(duration)}`;
+        elements.fileCard.classList.add("is-visible");
+        elements.transcribeButton.disabled = false;
+        hideStatus();
+      } catch (error) {
+        selectedFile = null;
+        elements.transcribeButton.disabled = true;
+        showError(error.message || "This media file is not supported by your browser.");
+      }
+    }
+
+    async function transcribeSelectedFile() {
+      if (!selectedFile) return;
+
+      setBusy(true);
+      clearGeneratedResults();
+
+      try {
+        setStatus("Extracting and preparing the audio…", { indeterminate: true });
+        const audio = await convertToWhisperAudio(selectedFile);
+        const modelId = MODELS[elements.qualitySelect.value] || MODELS.fast;
+
+        if (!transcriber || loadedModelId !== modelId) {
+          if (transcriber && typeof transcriber.dispose === "function") await transcriber.dispose();
+          transcriber = null;
+          loadedModelId = "";
+
+          setStatus("Downloading the private AI model…", { percent: 0 });
+          try {
+            transcriber = await pipeline("automatic-speech-recognition", modelId, {
+              dtype: "q8",
+              progress_callback: updateModelProgress
+            });
+          } catch (firstError) {
+            console.warn("Quantized model load failed; retrying with float32.", firstError);
+            setStatus("Retrying the AI model with a compatible format…", { indeterminate: true });
+            transcriber = await pipeline("automatic-speech-recognition", modelId, {
+              dtype: "fp32",
+              progress_callback: updateModelProgress
+            });
+          }
+          loadedModelId = modelId;
+        }
+
+        setStatus("Listening and writing the transcript…", { indeterminate: true });
+        const language = elements.languageSelect.value;
+        const options = {
+          chunk_length_s: 30,
+          stride_length_s: 5,
+          return_timestamps: true,
+          task: "transcribe"
+        };
+
+        // Transformers.js/Whisper expects Whisper language identifiers.
+        // Auto-detection is achieved by omitting the language option.
+        const whisperLanguages = {
+          english: "en",
+          arabic: "ar",
+          french: "fr",
+          spanish: "es"
+        };
+        if (language !== "auto") {
+          options.language = whisperLanguages[language] || language;
+        }
+
+        const result = await transcriber(audio, options);
+        rawTranscript = result.text?.replace(/\s+/g, " ").trim() || "";
+        if (!rawTranscript) throw new Error("No clear speech was detected. Try a file with louder, cleaner audio.");
+
+        timestampedTranscript = formatTimestampedTranscript(result);
+        elements.transcriptOutput.value = timestampedTranscript;
+        updateTranscriptMeta();
+        elements.resultsPanel.classList.add("is-visible");
+        setStatus("Transcript ready.", { percent: 100 });
+        elements.resultsPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (error) {
+        console.error(error);
+        showError(friendlyError(error));
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function updateModelProgress(data) {
+      if (data?.status !== "progress" || typeof data.progress !== "number") return;
+      const percent = Math.max(0, Math.min(100, Math.round(data.progress)));
+      const fileLabel = data.file ? ` · ${shortFileName(data.file)}` : "";
+      setStatus(`Downloading the AI model${fileLabel}`, { percent });
+    }
+
+    function updateTranscriptFromEditor() {
+      timestampedTranscript = elements.transcriptOutput.value.trim();
+      rawTranscript = stripTimestamps(timestampedTranscript);
+      updateTranscriptMeta();
+      clearStudyPack();
+    }
+
+    function createStudyPack() {
+      rawTranscript = stripTimestamps(elements.transcriptOutput.value);
+      if (wordCount(rawTranscript) < 18) {
+        showToast("The transcript is too short to build useful notes.");
+        return;
+      }
+
+      currentKeyPoints = extractKeyPoints(rawTranscript, 6);
+      renderKeyPoints(currentKeyPoints);
+      currentQuestions = generateQuiz(rawTranscript, currentKeyPoints, 5);
+      renderQuiz(currentQuestions);
+
+      elements.copyNotesButton.disabled = currentKeyPoints.length === 0;
+      elements.downloadPackButton.disabled = currentKeyPoints.length === 0;
+      elements.retryQuizButton.disabled = currentQuestions.length === 0;
+      document.getElementById("notesBlock").scrollIntoView({ behavior: "smooth", block: "start" });
+      showToast("Study pack ready.");
+    }
+
+    function renderKeyPoints(points) {
+      elements.keyPointsList.replaceChildren();
+      elements.notesEmpty.hidden = points.length > 0;
+
+      points.forEach((point, index) => {
+        const item = document.createElement("li");
+        item.dataset.number = String(index + 1).padStart(2, "0");
+        item.textContent = point;
+        elements.keyPointsList.appendChild(item);
+      });
+    }
+
+    function extractKeyPoints(text, maxPoints = 6) {
+      const sentences = splitIntoSentences(text)
+        .flatMap(splitLongSentence)
+        .map(cleanCandidate)
+        .filter(sentence => wordCount(sentence) >= 5 && sentence.length >= 28);
+
+      if (!sentences.length) return [];
+
+      const stopWords = getStopWords();
+      const frequency = new Map();
+      const sentenceWords = sentences.map(sentence =>
+        tokenize(sentence).filter(word => word.length > 2 && !stopWords.has(word))
+      );
+
+      for (const words of sentenceWords) {
+        for (const word of new Set(words)) frequency.set(word, (frequency.get(word) || 0) + 1);
+      }
+
+      const scored = sentences.map((sentence, index) => {
+        const words = sentenceWords[index];
+        const lexicalScore = words.reduce((sum, word) => sum + (frequency.get(word) || 0), 0) / Math.sqrt(Math.max(words.length, 1));
+        const numberBonus = /\p{N}/u.test(sentence) ? 1.8 : 0;
+        const earlyBonus = index < Math.ceil(sentences.length * 0.18) ? 1.1 : 0;
+        const lengthPenalty = words.length > 38 ? 1.4 : 0;
+        return { text: sentence, index, score: lexicalScore + numberBonus + earlyBonus - lengthPenalty };
+      }).sort((a, b) => b.score - a.score);
+
+      const selected = [];
+      for (const candidate of scored) {
+        if (selected.some(item => similarity(item.text, candidate.text) > 0.48)) continue;
+        selected.push(candidate);
+        if (selected.length >= Math.min(maxPoints, sentences.length)) break;
+      }
+
+      return selected
+        .sort((a, b) => a.index - b.index)
+        .map(item => makeConcisePoint(item.text));
+    }
+
+    function generateQuiz(transcript, points, maxQuestions = 5) {
+      const allTerms = extractTerms(transcript);
+      const usedTerms = new Set();
+      const questions = [];
+
+      for (const point of points) {
+        const matchingTerms = allTerms
+          .filter(term => point.toLocaleLowerCase().includes(term.value.toLocaleLowerCase()))
+          .filter(term => !usedTerms.has(term.value.toLocaleLowerCase()))
+          .sort((a, b) => termScore(b) - termScore(a));
+
+        const term = matchingTerms[0];
+        if (!term) {
+          questions.push({ type: "reveal", question: "What important idea was explained here?", answer: point });
+        } else {
+          usedTerms.add(term.value.toLocaleLowerCase());
+          const blanked = replaceFirstInsensitive(point, term.value, "________");
+          const distractors = buildDistractors(term, allTerms);
+
+          if (distractors.length >= 2) {
+            questions.push({
+              type: "choice",
+              question: `Which answer correctly completes this statement?\n\n${blanked}`,
+              answer: term.value,
+              options: shuffle([term.value, ...distractors.slice(0, 3)])
+            });
+          } else {
+            questions.push({
+              type: "reveal",
+              question: `Complete this statement from memory:\n\n${blanked}`,
+              answer: term.value
+            });
+          }
+        }
+
+        if (questions.length >= maxQuestions) break;
+      }
+
+      return questions;
+    }
+
+    function renderQuiz(questions) {
+      elements.quizContainer.replaceChildren();
+      elements.quizEmpty.hidden = questions.length > 0;
+      answeredQuestions = 0;
+      correctAnswers = 0;
+      elements.quizScore.classList.remove("is-visible");
+
+      questions.forEach((question, index) => {
+        const card = document.createElement("article");
+        card.className = "question";
+
+        const label = document.createElement("div");
+        label.className = "question-label";
+        label.textContent = `Question ${index + 1}`;
+
+        const title = document.createElement("div");
+        title.className = "question-title";
+        title.textContent = question.question;
+
+        card.append(label, title);
+
+        if (question.type === "choice") renderChoiceQuestion(card, question);
+        else renderRevealQuestion(card, question);
+
+        elements.quizContainer.appendChild(card);
+      });
+    }
+
+    function renderChoiceQuestion(card, question) {
+      const answers = document.createElement("div");
+      answers.className = "answers";
+      const result = document.createElement("div");
+      result.className = "question-result";
+
+      question.options.forEach(option => {
+        const button = document.createElement("button");
+        button.className = "answer";
+        button.type = "button";
+        button.textContent = option;
+        button.addEventListener("click", () => {
+          const isCorrect = option === question.answer;
+          answers.querySelectorAll("button").forEach(answerButton => {
+            answerButton.disabled = true;
+            if (answerButton.textContent === question.answer) answerButton.classList.add("correct");
+          });
+          if (!isCorrect) button.classList.add("wrong");
+          result.textContent = isCorrect ? "Correct." : `Correct answer: ${question.answer}`;
+          registerAnswer(isCorrect);
+        }, { once: true });
+        answers.appendChild(button);
+      });
+
+      card.append(answers, result);
+    }
+
+    function renderRevealQuestion(card, question) {
+      const button = document.createElement("button");
+      button.className = "button button-ghost button-small";
+      button.type = "button";
+      button.textContent = "Show answer";
+
+      const answer = document.createElement("div");
+      answer.className = "reveal-answer";
+      answer.textContent = question.answer;
+
+      button.addEventListener("click", () => {
+        answer.classList.add("is-visible");
+        button.disabled = true;
+        button.textContent = "Answer revealed";
+      }, { once: true });
+
+      card.append(button, answer);
+    }
+
+    function registerAnswer(isCorrect) {
+      answeredQuestions += 1;
+      if (isCorrect) correctAnswers += 1;
+      const choiceQuestions = currentQuestions.filter(question => question.type === "choice").length;
+      if (answeredQuestions !== choiceQuestions) return;
+      elements.quizScore.textContent = `Score: ${correctAnswers}/${choiceQuestions} correct`;
+      elements.quizScore.classList.add("is-visible");
+    }
+
+    function extractTerms(text) {
+      const terms = [];
+      const seen = new Set();
+      const add = (value, type) => {
+        const clean = value.replace(/[.,!?;:،؛؟]+$/gu, "").trim();
+        const key = `${type}:${clean.toLocaleLowerCase()}`;
+        if (clean.length < 2 || seen.has(key)) return;
+        seen.add(key);
+        terms.push({ value: clean, type });
+      };
+
+      for (const number of text.match(/\b\d+(?:[.,]\d+)?\b/g) || []) add(number, "number");
+
+      const latinNames = text.match(/\b[A-Z][\p{L}\p{N}-]*(?:\s+(?:[A-Z][\p{L}\p{N}-]*|\d+(?:\.\d+)?)){0,3}\b/gu) || [];
+      const ignoredNames = new Set(["The", "This", "That", "These", "Those", "We", "I", "You", "It", "They", "And", "But", "So", "In", "On", "At", "For", "From"]);
+      for (const name of latinNames) if (!ignoredNames.has(name)) add(name, "name");
+
+      return terms;
+    }
+
+    function buildDistractors(term, terms) {
+      if (term.type === "number") return createNumberDistractors(term.value);
+      return unique(terms
+        .filter(other => other.type === term.type && other.value.toLocaleLowerCase() !== term.value.toLocaleLowerCase())
+        .map(other => other.value)
+        .filter(value => !tooSimilarTerms(value, term.value)));
+    }
+
+    function createNumberDistractors(value) {
+      const normalized = value.replace(",", ".");
+      const number = Number(normalized);
+      if (!Number.isFinite(number)) return [];
+
+      if (normalized.includes(".")) {
+        const decimalPlaces = normalized.split(".")[1].length;
+        const step = 1 / (10 ** decimalPlaces);
+        return unique([number - step, number + step, number + (step * 2)]
+          .filter(item => item >= 0 && item !== number)
+          .map(item => item.toFixed(decimalPlaces)));
+      }
+
+      const step = number <= 10 ? 1 : number <= 50 ? 5 : number <= 200 ? 10 : Math.max(10, Math.round(number * 0.1));
+      return unique([number - step, number + step, number + (step * 2)]
+        .filter(item => item >= 0 && item !== number)
+        .map(String));
+    }
+
+    function formatTimestampedTranscript(result) {
+      if (!Array.isArray(result?.chunks) || result.chunks.length === 0) {
+        return result?.text || "";
+      }
+
+      return result.chunks
+        .map(chunk => {
+          const start = Array.isArray(chunk.timestamp) ? chunk.timestamp[0] : 0;
+          const endValue = Array.isArray(chunk.timestamp) ? chunk.timestamp[1] : null;
+          const end = typeof endValue === "number" && Number.isFinite(endValue)
+            ? formatClock(endValue)
+            : "--:--";
+          const text = String(chunk.text || "").trim();
+          return text ? `[${formatClock(start)} – ${end}]\n${text}` : "";
+        })
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    function stripTimestamps(text) {
+      return text
+        .replace(/^\s*\[\d{1,3}:\d{2}\s*[–-]\s*(?:\d{1,3}:\d{2}|--:--)\]\s*/gm, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function splitIntoSentences(text) {
+      const normalized = text.replace(/\s+/g, " ").trim();
+      const locale = elements.languageSelect.value === "arabic" ? "ar" : elements.languageSelect.value === "french" ? "fr" : "en";
+
+      if (typeof Intl !== "undefined" && Intl.Segmenter) {
+        try {
+          const segmenter = new Intl.Segmenter(locale, { granularity: "sentence" });
+          return [...segmenter.segment(normalized)].map(item => item.segment.trim()).filter(Boolean);
+        } catch {}
+      }
+
+      const protectedText = normalized.replace(/(\d)\.(\d)/g, "$1__DOT__$2");
+      return (protectedText.match(/[^.!?؟]+[.!?؟]+|[^.!?؟]+$/gu) || [])
+        .map(item => item.replace(/__DOT__/g, ".").trim());
+    }
+
+    function splitLongSentence(sentence) {
+      if (sentence.length < 230) return [sentence];
+      return sentence
+        .split(/;\s+|؛\s*|,\s+(?=(?:and|but|while|because|so|et|mais|car|donc)\s+)/iu)
+        .map(item => item.trim())
+        .filter(item => item.length >= 28);
+    }
+
+    function cleanCandidate(text) {
+      return text
+        .replace(/\s+/g, " ")
+        .replace(/^(yeah|oh|um|uh|well|okay|ok|right|basically|actually|donc|alors)[,.،]?\s+/iu, "")
+        .trim();
+    }
+
+    function makeConcisePoint(text) {
+      const point = cleanCandidate(text);
+      const clipped = point.length > 260 ? `${point.slice(0, 252).trim()}…` : point;
+      return clipped.charAt(0).toLocaleUpperCase() + clipped.slice(1);
+    }
+
+    function tokenize(text) {
+      return text
+        .toLocaleLowerCase()
+        .replace(/[^\p{L}\p{N}'’.-]+/gu, " ")
+        .split(/\s+/)
+        .filter(Boolean);
+    }
+
+    function getStopWords() {
+      return new Set((
+        "the a an and or but if then to of in on for with at by from is are was were be been being it its this that these those i you he she we they them our your their my me as so do does did have has had can could would should very just also more some yeah um uh " +
+        "le la les un une des et ou mais de du dans sur pour avec par est sont ce cette ces je tu il elle nous vous ils elles que qui au aux " +
+        "في من على إلى عن هذا هذه ذلك التي الذي هو هي نحن أن كان تكون مع أو و ما لا ثم قد تم " +
+        "واحد شي هاد ديال كاين راه أنا نتا نتي حنا هوما منين علاش باش"
+      ).split(/\s+/));
+    }
+
+    function similarity(a, b) {
+      const setA = new Set(tokenize(a));
+      const setB = new Set(tokenize(b));
+      const common = [...setA].filter(word => setB.has(word)).length;
+      const union = new Set([...setA, ...setB]).size;
+      return union ? common / union : 0;
+    }
+
+    function termScore(term) {
+      return (term.type === "number" ? 6 : 0) + (term.value.includes(" ") ? 5 : 0) + Math.min(term.value.length / 10, 3);
+    }
+
+    function tooSimilarTerms(a, b) {
+      const first = a.toLocaleLowerCase();
+      const second = b.toLocaleLowerCase();
+      return first === second || first.includes(second) || second.includes(first);
+    }
+
+    function replaceFirstInsensitive(text, search, replacement) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return text.replace(new RegExp(escaped, "iu"), replacement);
+    }
+
+    function shuffle(array) {
+      const result = [...array];
+      for (let index = result.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [result[index], result[randomIndex]] = [result[randomIndex], result[index]];
+      }
+      return result;
+    }
+
+    function unique(array) { return [...new Set(array)]; }
+    function wordCount(text) { return tokenize(text).length; }
+
+    function updateTranscriptMeta() {
+      elements.wordCountTag.textContent = `${wordCount(rawTranscript).toLocaleString()} words`;
+      elements.durationTag.textContent = formatClock(mediaDuration);
+      elements.languageTag.textContent = elements.languageSelect.options[elements.languageSelect.selectedIndex].text;
+    }
+
+    function formatNotes() {
+      return currentKeyPoints.map((point, index) => `${index + 1}. ${point}`).join("\n\n");
+    }
+
+    function downloadStudyPack() {
+      const content = [
+        "STUDENT VIDEO AI — STUDY PACK",
+        `Source: ${selectedFile?.name || "Lesson video"}`,
+        "",
+        "KEY POINTS",
+        formatNotes(),
+        "",
+        "TIMESTAMPED TRANSCRIPT",
+        elements.transcriptOutput.value.trim()
+      ].join("\n");
+      downloadText("student-video-study-pack.txt", content);
+    }
+
+    async function copyText(text, successMessage) {
+      if (!text.trim()) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const helper = document.createElement("textarea");
+        helper.value = text;
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        helper.remove();
+      }
+      showToast(successMessage);
+    }
+
+    function downloadText(filename, content) {
+      if (!content.trim()) return;
+      const url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast("Download ready.");
+    }
+
+    function setStatus(message, { percent = null, indeterminate = false } = {}) {
+      elements.statusWrap.classList.add("is-visible");
+      elements.statusText.textContent = message;
+      elements.progressBar.classList.toggle("is-indeterminate", indeterminate);
+      elements.progressBar.style.width = indeterminate ? "38%" : `${percent ?? 0}%`;
+      elements.statusPercent.textContent = typeof percent === "number" ? `${percent}%` : "";
+    }
+
+    function hideStatus() {
+      elements.statusWrap.classList.remove("is-visible");
+      elements.progressBar.classList.remove("is-indeterminate");
+      elements.progressBar.style.width = "0%";
+      elements.statusPercent.textContent = "";
+    }
+
+    function showError(message) { setStatus(`Error: ${message}`, { percent: 0 }); }
+
+    function friendlyError(error) {
+      const message = error?.message || "Something went wrong.";
+      if (/memory|allocation|out of bounds/i.test(message)) return "This device ran out of memory. Choose Fast quality or use a shorter video.";
+      if (/decode|audio|media|format/i.test(message)) return "Your browser could not read this audio. Try MP4, MP3, M4A, or WAV.";
+      if (/fetch|network|download|404|not found/i.test(message)) {
+        return "The AI model could not download. Check your internet connection, then reload the page and try again.";
+      }
+      if (/dtype|quant|onnx|session|wasm/i.test(message)) {
+        return "The AI model could not start in this browser. Try Fast quality, Chrome/Edge, or a shorter video.";
+      }
+      return message;
+    }
+
+    function setBusy(isBusy) {
+      elements.transcribeButton.disabled = isBusy || !selectedFile;
+      elements.fileInput.disabled = isBusy;
+      elements.removeFileButton.disabled = isBusy;
+      elements.languageSelect.disabled = isBusy;
+      elements.qualitySelect.disabled = isBusy;
+    }
+
+    function clearGeneratedResults() {
+      rawTranscript = "";
+      timestampedTranscript = "";
+      elements.transcriptOutput.value = "";
+      elements.resultsPanel.classList.remove("is-visible");
+      clearStudyPack();
+    }
+
+    function clearStudyPack() {
+      currentKeyPoints = [];
+      currentQuestions = [];
+      elements.keyPointsList.replaceChildren();
+      elements.quizContainer.replaceChildren();
+      elements.notesEmpty.hidden = false;
+      elements.quizEmpty.hidden = false;
+      elements.quizScore.classList.remove("is-visible");
+      elements.copyNotesButton.disabled = true;
+      elements.downloadPackButton.disabled = true;
+      elements.retryQuizButton.disabled = true;
+    }
+
+    function resetAll() {
+      selectedFile = null;
+      mediaDuration = 0;
+      elements.fileInput.value = "";
+      elements.fileCard.classList.remove("is-visible");
+      elements.fileName.textContent = "";
+      elements.fileMeta.textContent = "";
+      elements.transcribeButton.disabled = true;
+      clearGeneratedResults();
+      hideStatus();
+      elements.dropZone.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      elements.toast.textContent = message;
+      elements.toast.classList.add("is-visible");
+      toastTimer = setTimeout(() => elements.toast.classList.remove("is-visible"), 2400);
+    }
+
+    function getMediaDuration(file) {
+      return new Promise((resolve, reject) => {
+        const media = document.createElement(file.type.startsWith("video/") ? "video" : "audio");
+        const url = URL.createObjectURL(file);
+        media.preload = "metadata";
+        media.onloadedmetadata = () => {
+          const duration = media.duration;
+          URL.revokeObjectURL(url);
+          resolve(duration);
+        };
+        media.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("This media format is not supported by your browser."));
+        };
+        media.src = url;
+      });
+    }
+
+    async function convertToWhisperAudio(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Audio processing is not supported in this browser.");
+
+      const audioContext = new AudioContextClass();
+      try {
+        if (audioContext.state === "suspended") await audioContext.resume();
+
+        const decodedAudio = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+        if (!decodedAudio || !decodedAudio.duration) {
+          throw new Error("The browser decoded the file but found no audio.");
+        }
+
+        const targetRate = 16000;
+        const frameCount = Math.ceil(decodedAudio.duration * targetRate);
+        if (!Number.isFinite(frameCount) || frameCount <= 0) {
+          throw new Error("Could not prepare the audio for transcription.");
+        }
+
+        const offlineContext = new OfflineAudioContext(1, frameCount, targetRate);
+        const source = offlineContext.createBufferSource();
+        source.buffer = decodedAudio;
+        source.connect(offlineContext.destination);
+        source.start();
+        const rendered = await offlineContext.startRendering();
+        return new Float32Array(rendered.getChannelData(0));
+      } finally {
+        await audioContext.close();
+      }
+    }
+
+    function formatClock(seconds) {
+      const total = Math.max(0, Math.floor(Number(seconds) || 0));
+      const minutes = Math.floor(total / 60);
+      const remaining = total % 60;
+      return `${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function shortFileName(path) {
+      const name = String(path).split("/").pop() || "model file";
+      return name.length > 24 ? `${name.slice(0, 21)}…` : name;
+    }
+  </script>
+</body>
+</html>
