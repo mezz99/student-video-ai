@@ -35,7 +35,9 @@
       line-height:1.5;
     }
 
-    button,input,textarea {
+    button,
+    input,
+    textarea {
       font:inherit;
     }
 
@@ -412,9 +414,14 @@
       background:#fcfcf7;
       padding:16px;
       color:var(--ink);
+      font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:15px;
+      line-height:1.7;
+    }
+
+    .timed-transcript {
       font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
       font-size:13px;
-      line-height:1.65;
     }
 
     .points {
@@ -645,8 +652,9 @@
       </div>
 
       <p>
-        Upload an English lesson and get a transcript, key points,
-        and a revision quiz—directly in your browser.
+        Upload an English MP4 lesson and get a clean transcript,
+        grounded key points, and an interactive quiz—directly in
+        your browser.
       </p>
     </section>
 
@@ -655,21 +663,23 @@
         <h2>Add your lesson</h2>
 
         <p class="hint">
-          English video or audio · maximum 10 minutes and 100 MB.
+          English MP4 video · maximum 10 minutes and 100 MB.
         </p>
 
         <label class="drop" id="dropZone" for="fileInput">
           <div>
             <div class="upload-icon">↑</div>
-            <strong>Choose a video or drop it here</strong>
-            <span>MP4, MOV, WebM, MP3, M4A or WAV</span>
+            <strong>Choose an MP4 video or drop it here</strong>
+            <span>
+              MP4 only · H.264 video with AAC audio recommended
+            </span>
           </div>
         </label>
 
         <input
           id="fileInput"
           type="file"
-          accept="video/*,audio/*"
+          accept=".mp4,video/mp4"
         >
 
         <div class="file" id="fileCard">
@@ -713,7 +723,7 @@
         </div>
 
         <p class="privacy">
-          🔒 Your media stays in this browser. No account,
+          🔒 Your video stays in this browser. No account,
           API key, or server upload.
         </p>
       </div>
@@ -743,11 +753,19 @@
                 Timestamps
               </button>
 
-              <button class="ghost small" id="copyTranscript">
+              <button
+                class="ghost small"
+                id="copyTranscript"
+                type="button"
+              >
                 Copy
               </button>
 
-              <button class="ghost small" id="downloadTranscript">
+              <button
+                class="ghost small"
+                id="downloadTranscript"
+                type="button"
+              >
                 Download
               </button>
             </div>
@@ -777,7 +795,7 @@
               <h3>Key points</h3>
 
               <p class="hint">
-                Structured English notes generated from the transcript.
+                Concise English notes grounded in the transcript.
               </p>
             </div>
 
@@ -785,6 +803,7 @@
               <button
                 class="ghost small"
                 id="copyPoints"
+                type="button"
                 disabled
               >
                 Copy
@@ -803,8 +822,8 @@
           <h3>Revision quiz</h3>
 
           <p class="hint">
-            Choose an answer. The app marks it immediately
-            and shows the correct explanation.
+            Choose an answer. The app marks it immediately and
+            shows the correct explanation.
           </p>
 
           <div class="empty" id="quizEmpty">
@@ -812,6 +831,11 @@
           </div>
 
           <div class="quiz" id="quiz"></div>
+
+          <p class="privacy">
+            AI-generated study material can make mistakes.
+            Verify important facts against the transcript.
+          </p>
         </div>
       </div>
     </section>
@@ -873,7 +897,6 @@
     let pointTitles = [];
     let quizCards = [];
     let toastTimer;
-
     let transcriptMode = "clean";
 
     let transcriptViews = {
@@ -943,11 +966,11 @@
         return;
       }
 
-      if (
-        !selected.type.startsWith("video/") &&
-        !selected.type.startsWith("audio/")
-      ) {
-        fail("Choose a video or audio file.");
+      if (!/\.mp4$/i.test(selected.name)) {
+        fail(
+          "Only MP4 video files are supported in this beta."
+        );
+
         return;
       }
 
@@ -956,24 +979,34 @@
         return;
       }
 
-      setStatus("Checking the media file…",null,true);
+      setStatus(
+        "Checking the MP4 video…",
+        null,
+        true
+      );
 
       try {
         duration = await mediaDuration(selected);
 
-        if (!Number.isFinite(duration) || duration <= 0) {
-          throw new Error("Could not read this file.");
+        if (
+          !Number.isFinite(duration) ||
+          duration <= 0
+        ) {
+          throw new Error(
+            "Could not read this MP4 video."
+          );
         }
 
         if (duration > MAX_DURATION) {
           throw new Error(
-            "The file is longer than 10 minutes."
+            "The video is longer than 10 minutes."
           );
         }
 
         file = selected;
 
-        el.fileName.textContent = selected.name;
+        el.fileName.textContent =
+          selected.name;
 
         el.fileMeta.textContent =
           `${formatBytes(selected.size)} · ${clock(duration)}`;
@@ -996,13 +1029,18 @@
       clearResults();
 
       try {
-        setStatus("Extracting audio…",null,true);
+        setStatus(
+          "Extracting audio from the MP4…",
+          null,
+          true
+        );
 
-        const audio = await whisperAudio(file);
+        const audio =
+          await whisperAudio(file);
 
         if (!transcriber) {
           setStatus(
-            "Loading the same Whisper model used in V1…",
+            "Loading the English Whisper model…",
             null,
             true
           );
@@ -1031,13 +1069,13 @@
 
                 if (progress >= 100) {
                   setStatus(
-                    "Model file ready · preparing the remaining files…",
+                    "Model file ready · preparing remaining files…",
                     null,
                     true
                   );
                 } else {
                   setStatus(
-                    "Downloading the V1 Whisper model…",
+                    "Downloading the English Whisper model…",
                     progress,
                     false
                   );
@@ -1047,13 +1085,20 @@
           );
         }
 
-        setStatus("Transcribing the lesson…",null,true);
+        setStatus(
+          "Transcribing the lesson…",
+          null,
+          true
+        );
 
-        const result = await transcriber(audio,{
-          chunk_length_s:30,
-          stride_length_s:5,
-          return_timestamps:true
-        });
+        const result = await transcriber(
+          audio,
+          {
+            chunk_length_s:30,
+            stride_length_s:5,
+            return_timestamps:true
+          }
+        );
 
         rawText = (result.text || "")
           .replace(/\s+/g," ")
@@ -1120,13 +1165,15 @@
             arrayBuffer.slice(0)
           );
 
-        const rate = 16000;
+        const sampleRate = 16000;
 
         const offline =
           new OfflineAudioContext(
             1,
-            Math.ceil(decoded.duration * rate),
-            rate
+            Math.ceil(
+              decoded.duration * sampleRate
+            ),
+            sampleRate
           );
 
         const source =
@@ -1148,7 +1195,10 @@
     }
 
     async function createStudyPack() {
-      rawText = stripTimestamps(el.transcript.value);
+      rawText =
+        stripTimestamps(
+          el.transcript.value
+        );
 
       if (words(rawText).length < 18) {
         toast("The transcript is too short.");
@@ -1234,10 +1284,12 @@
           );
 
           generatedNotes =
-            await generateBetterNotes(candidates);
+            await generateBetterNotes(
+              candidates
+            );
         } catch (modelError) {
           console.warn(
-            "Study model unavailable; using the local structured summarizer.",
+            "Study model unavailable. Using the structured fallback.",
             modelError
           );
         }
@@ -1278,7 +1330,8 @@
         );
       } finally {
         el.study.disabled = false;
-        el.study.textContent = originalLabel;
+        el.study.textContent =
+          originalLabel;
       }
     }
 
@@ -1301,14 +1354,15 @@ Return only a numbered list.
 FACTS:
 ${source}`;
 
-      const output = await studyGenerator(
-        prompt,
-        {
-          max_new_tokens:180,
-          do_sample:false,
-          repetition_penalty:1.15
-        }
-      );
+      const output =
+        await studyGenerator(
+          prompt,
+          {
+            max_new_tokens:180,
+            do_sample:false,
+            repetition_penalty:1.15
+          }
+        );
 
       const text =
         (output?.[0]?.generated_text || "")
@@ -1342,9 +1396,12 @@ ${source}`;
       return notes
         .map(cleanSentence)
         .filter(note => {
+          const length =
+            words(note).length;
+
           return (
-            words(note).length >= 5 &&
-            words(note).length <= 32
+            length >= 5 &&
+            length <= 32
           );
         })
         .slice(0,5);
@@ -1355,56 +1412,233 @@ ${source}`;
       fallback,
       sources
     ) {
+      const aligned =
+        alignGeneratedNotes(
+          generated,
+          sources
+        );
+
       return fallback.map((safe,index) => {
         const candidate =
-          generated[index] || "";
+          aligned[index] || "";
+
+        const source =
+          sources[index] || "";
 
         if (
-          !candidate ||
-          /\b(?:i|we|our|you)\b/i.test(candidate)
-        ) {
-          return safe;
-        }
-
-        if (
-          words(candidate).length > 28 ||
-          similarity(
+          !isGroundedNote(
             candidate,
-            sources[index] || ""
-          ) > .78
+            source
+          )
         ) {
           return safe;
         }
 
-        const sourceTerms =
-          new Set(
-            words(sources.join(" "))
-              .filter(word => {
-                return word.length > 4;
-              })
-          );
+        const candidateLength =
+          words(candidate).length;
 
-        const overlap =
-          words(candidate).filter(word => {
-            return sourceTerms.has(word);
-          }).length;
+        const sourceLength =
+          words(source).length;
 
-        return overlap >= 2
-          ? candidate
-          : safe;
+        if (
+          similarity(candidate,source) > .82 &&
+          candidateLength >= sourceLength * .85
+        ) {
+          return safe;
+        }
+
+        return candidate;
       });
+    }
+
+    function alignGeneratedNotes(
+      generated,
+      sources
+    ) {
+      const unused =
+        generated.map(note => {
+          return {note};
+        });
+
+      return sources.map(source => {
+        let winner = -1;
+        let score = 0;
+
+        unused.forEach((item,index) => {
+          const value =
+            contentSimilarity(
+              item.note,
+              source
+            );
+
+          if (value > score) {
+            score = value;
+            winner = index;
+          }
+        });
+
+        if (
+          winner < 0 ||
+          score < .28
+        ) {
+          return "";
+        }
+
+        return unused
+          .splice(winner,1)[0]
+          .note;
+      });
+    }
+
+    function isGroundedNote(
+      note,
+      source
+    ) {
+      if (
+        !note ||
+        /\b(?:i|we|our|you)\b/i.test(note)
+      ) {
+        return false;
+      }
+
+      const length =
+        words(note).length;
+
+      if (
+        length < 5 ||
+        length > 28
+      ) {
+        return false;
+      }
+
+      const candidateTerms =
+        contentTerms(note);
+
+      const sourceTerms =
+        new Set(
+          contentTerms(source)
+        );
+
+      const overlap =
+        candidateTerms.filter(term => {
+          return sourceTerms.has(term);
+        }).length;
+
+      if (
+        overlap < 2 ||
+        overlap /
+          Math.max(
+            candidateTerms.length,
+            1
+          ) < .45
+      ) {
+        return false;
+      }
+
+      const sourceNumbers =
+        new Set(
+          source.match(
+            /\b\d[\d,.]*(?:-\d+)?\b/g
+          ) || []
+        );
+
+      const candidateNumbers =
+        note.match(
+          /\b\d[\d,.]*(?:-\d+)?\b/g
+        ) || [];
+
+      if (
+        candidateNumbers.some(number => {
+          return !sourceNumbers.has(number);
+        })
+      ) {
+        return false;
+      }
+
+      const sourceLower =
+        source.toLowerCase();
+
+      const names =
+        (
+          note.match(
+            /\b[A-Z][A-Za-z0-9.-]{2,}\b/g
+          ) || []
+        ).filter(name => {
+          return !/^(?:The|This|That|Users|People|Another|Today|Its)$/i
+            .test(name);
+        });
+
+      return !names.some(name => {
+        return !sourceLower.includes(
+          name.toLowerCase()
+        );
+      });
+    }
+
+    function contentTerms(text) {
+      const stop = new Set(
+        (
+          "the a an and or but to of in on for with at by " +
+          "from is are was were be been being it this that " +
+          "these those i you he she we they as so do does " +
+          "did have has had can could would should will " +
+          "just also more some into about their our your " +
+          "its than then there here new latest very only " +
+          "one everyone people team model models"
+        ).split(" ")
+      );
+
+      return words(text).filter(word => {
+        return (
+          word.length > 2 &&
+          !stop.has(word)
+        );
+      });
+    }
+
+    function contentSimilarity(
+      first,
+      second
+    ) {
+      const firstTerms =
+        contentTerms(first);
+
+      const secondTerms =
+        new Set(
+          contentTerms(second)
+        );
+
+      if (
+        !firstTerms.length ||
+        !secondTerms.size
+      ) {
+        return 0;
+      }
+
+      const overlap =
+        firstTerms.filter(term => {
+          return secondTerms.has(term);
+        }).length;
+
+      return overlap /
+        Math.min(
+          firstTerms.length,
+          secondTerms.size
+        );
     }
 
     function smartRewritePoints(sources) {
       let currentEntity = "";
 
       return sources.map(source => {
-        const found = findEntity(source);
+        const found =
+          findEntity(source);
 
-        const note = rewriteKeyPoint(
-          source,
-          currentEntity || found
-        );
+        const note =
+          rewriteKeyPoint(
+            source,
+            currentEntity || found
+          );
 
         if (found) {
           currentEntity = found;
@@ -1440,8 +1674,13 @@ ${source}`;
       );
 
       if (match) {
+        const description =
+          /^(?:a|an|the)\b/i.test(match[2])
+            ? match[2]
+            : `the ${match[2]}`;
+
         return cleanSentence(
-          `${match[1]}'s model weights are planned for release in the coming weeks; it is ${match[2]}`
+          `${match[1]}'s model weights are planned for release in the coming weeks; it is ${description}`
         );
       }
 
@@ -1450,8 +1689,18 @@ ${source}`;
       );
 
       if (match) {
+        const goal = match[1]
+          .replace(
+            /\byour behalf\b/gi,
+            "people's behalf"
+          )
+          .replace(
+            /\byour\b/gi,
+            "people's"
+          );
+
         return cleanSentence(
-          `The stated goal is to give everyone ${match[1].replace(/\byour\s+/gi,"")}`
+          `The stated goal is for everyone to have ${goal}`
         );
       }
 
@@ -1531,7 +1780,7 @@ ${source}`;
     function findEntity(text) {
       const matches =
         text.match(
-          /\b(?:[A-Z][a-zA-Z0-9.-]+(?:\s+[A-Z][a-zA-Z0-9.-]+){1,3})\b/g
+          /\b(?:[A-Z][a-zA-Z0-9.-]+(?:\s+[A-Z][a-zA-Z0-9.-]+){1,3})(?:\s+\d+(?:\.\d+)*)?\b/g
         ) || [];
 
       return (
@@ -1607,6 +1856,7 @@ ${source}`;
 
         return {
           question:quizQuestion(
+            answer,
             titles[index]
           ),
           answer,
@@ -1615,33 +1865,100 @@ ${source}`;
       });
     }
 
-    function quizQuestion(title) {
-      const questions = {
-        "Announcement":
-          "Which statement best describes the main announcement?",
+    function quizQuestion(
+      point,
+      title
+    ) {
+      const entity =
+        findEntity(point);
 
-        "Key specification":
-          "Which statement gives the key technical specification?",
+      const topic =
+        topicFromPoint(
+          point,
+          entity
+        );
 
-        "Upcoming release":
-          "What upcoming release or change does the lesson mention?",
+      if (title === "Announcement") {
+        return entity
+          ? `What was announced about ${entity}?`
+          : "Which statement best describes the main announcement?";
+      }
 
-        "Main goal":
-          "Which statement describes the main long-term goal?",
+      if (title === "Key specification") {
+        return (
+          "Which statement gives the key specification for " +
+          `${topic}?`
+        );
+      }
 
-        "Availability":
-          "Which statement explains where or how the technology can be used?",
+      if (title === "Upcoming release") {
+        return `What is planned for ${topic}?`;
+      }
 
-        "Use cases":
-          "Which statement describes the highlighted uses or benefits?",
+      if (title === "Main goal") {
+        return (
+          "Which statement describes the goal involving " +
+          `${topic}?`
+        );
+      }
 
-        "Core idea":
-          "Which statement best captures this key idea?"
-      };
+      if (title === "Availability") {
+        return (
+          "Which statement correctly explains access to " +
+          `${topic}?`
+        );
+      }
+
+      if (title === "Use cases") {
+        return (
+          "Which statement describes the uses or benefits of " +
+          `${topic}?`
+        );
+      }
 
       return (
-        questions[title] ||
-        questions["Core idea"]
+        `Which statement is correct about ${topic}?`
+      );
+    }
+
+    function topicFromPoint(
+      point,
+      entity
+    ) {
+      if (entity) {
+        return entity;
+      }
+
+      const patterns = [
+        /personal super-?intelligence/i,
+        /local communities?/i,
+        /community infrastructure/i,
+        /model weights/i,
+        /latest models/i,
+        /on-device models/i,
+        /health,? relationships?,? careers?,? (?:and )?finances?/i
+      ];
+
+      const match = patterns
+        .map(pattern => point.match(pattern))
+        .find(Boolean);
+
+      if (match) {
+        return match[0].toLowerCase();
+      }
+
+      const terms =
+        contentTerms(point)
+          .filter(term => {
+            return !/^(?:stated|goal|planned|release|available|access|working|building|making|support)$/i
+              .test(term);
+          });
+
+      return (
+        terms
+          .slice(0,2)
+          .join(" ") ||
+        "this topic"
       );
     }
 
@@ -1696,7 +2013,10 @@ ${source}`;
       );
     }
 
-    function extractPoints(text,maximum) {
+    function extractPoints(
+      text,
+      maximum
+    ) {
       const sentences =
         splitSentences(text).filter(sentence => {
           return (
@@ -2047,6 +2367,11 @@ ${source}`;
         mode === "timed"
       );
 
+      el.transcript.classList.toggle(
+        "timed-transcript",
+        mode === "timed"
+      );
+
       rawText =
         stripTimestamps(
           el.transcript.value
@@ -2078,7 +2403,10 @@ ${source}`;
       )
         .map(sentence => {
           return sentence
-            .replace(/__DOT__/g,".")
+            .replace(
+              /__DOT__/g,
+              "."
+            )
             .trim();
         })
         .filter(Boolean);
@@ -2143,11 +2471,7 @@ ${source}`;
       return new Promise(
         (resolve,reject) => {
           const media =
-            document.createElement(
-              mediaFile.type.startsWith("video/")
-                ? "video"
-                : "audio"
-            );
+            document.createElement("video");
 
           const url =
             URL.createObjectURL(mediaFile);
@@ -2164,7 +2488,7 @@ ${source}`;
 
             reject(
               new Error(
-                "This media format is not supported."
+                "This MP4 cannot be decoded by your browser. Export it as MP4 with H.264 video and AAC audio."
               )
             );
           };
@@ -2233,8 +2557,8 @@ ${source}`;
           .test(message)
       ) {
         return (
-          "Your browser could not read this audio. " +
-          "Try MP4, MP3, M4A, or WAV."
+          "This MP4 cannot be decoded. Export it as MP4 " +
+          "with H.264 video and AAC audio, then try again."
         );
       }
 
@@ -2361,9 +2685,7 @@ ${source}`;
         );
 
         textarea.select();
-
         document.execCommand("copy");
-
         textarea.remove();
       }
 
