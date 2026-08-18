@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111714">
+  <title>VideoBrief AI</title>
+  <style>
+    :root {
+      --ink:#102019; --muted:#607068; --paper:#f5f3ec; --card:#fffef9;
+      --line:#d9ddd5; --orange:#ff6838; --lime:#c8f560; --dark:#111714;
+      --green:#15794a; --red:#b73535; --shadow:0 24px 70px rgba(20,30,24,.13);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-width:320px;background:radial-gradient(circle at 8% 0,rgba(200,245,96,.25),transparent 30rem),radial-gradient(circle at 100% 18%,rgba(255,104,56,.15),transparent 30rem),var(--paper);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+    button,input,textarea{font:inherit}
+    button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid rgba(255,104,56,.3);outline-offset:3px}
+    .shell{width:min(1040px,calc(100% - 28px));margin:auto}
+    header{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+    .brand{display:flex;align-items:center;gap:11px;font-weight:900;letter-spacing:-.03em}
+    .logo{display:grid;width:38px;height:38px;place-items:center;border-radius:12px;background:var(--dark);color:var(--lime);box-shadow:4px 4px 0 var(--orange);font-size:13px}
+    .version{border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.7);padding:7px 11px;color:var(--muted);font-size:12px;font-weight:800}
+    .hero{display:grid;grid-template-columns:1.25fr .75fr;align-items:end;gap:36px;padding:52px 0 38px}
+    .eyebrow{margin:0 0 10px;color:#c8431c;font-size:12px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}
+    h1{margin:0;font-size:clamp(44px,7vw,82px);font-weight:950;letter-spacing:-.07em;line-height:.93}
+    h1 span{position:relative;z-index:0;white-space:nowrap}
+    h1 span:after{position:absolute;right:0;bottom:.05em;left:0;height:.23em;background:var(--lime);content:"";z-index:-1;transform:rotate(-1deg)}
+    .hero p:last-child{margin:0;color:var(--muted);font-size:18px}
+    .app{margin:20px 0 70px;overflow:hidden;border:1px solid rgba(16,32,25,.1);border-radius:28px;background:var(--card);box-shadow:var(--shadow)}
+    .panel{padding:clamp(22px,5vw,50px)}
+    .panel+.panel{border-top:1px solid var(--line)}
+    h2{margin:0;font-size:clamp(26px,4vw,38px);letter-spacing:-.04em}
+    h3{margin:0;font-size:21px;letter-spacing:-.03em}
+    .hint{margin:7px 0 20px;color:var(--muted);font-size:14px}
+    .drop{display:grid;min-height:200px;place-items:center;border:2px dashed #bdc4ba;border-radius:20px;background:linear-gradient(145deg,rgba(200,245,96,.09),rgba(255,104,56,.04));padding:24px;text-align:center;cursor:pointer;transition:.18s}
+    .drop:hover,.drop.drag{border-color:var(--orange);transform:translateY(-2px)}
+    .drop strong{display:block;font-size:18px}
+    .drop span{display:block;margin-top:7px;color:var(--muted);font-size:13px}
+    .upload-icon{display:grid;width:56px;height:56px;margin:0 auto 14px;place-items:center;border-radius:17px;background:var(--dark);color:#fff;font-size:25px}
+    #fileInput{position:absolute;width:1px;height:1px;opacity:0}
+    .file{display:none;align-items:center;gap:12px;margin-top:14px;border:1px solid var(--line);border-radius:15px;background:#fafaf5;padding:13px 15px}
+    .file.show{display:flex}.file-main{min-width:0;flex:1}.file-name{overflow:hidden;font-weight:850;text-overflow:ellipsis;white-space:nowrap}.file-meta{color:var(--muted);font-size:12px}
+    .row{display:flex;flex-wrap:wrap;gap:11px;margin-top:20px}
+    button{min-height:46px;border:0;border-radius:12px;padding:11px 17px;font-weight:850;cursor:pointer}
+    button:disabled{cursor:not-allowed;opacity:.4}
+    .primary{background:var(--orange);color:#210d05;box-shadow:0 7px 0 #ce4217}.primary:active:not(:disabled){transform:translateY(3px);box-shadow:0 4px 0 #ce4217}
+    .dark{background:var(--dark);color:#fff}.ghost{border:1px solid var(--line);background:transparent;color:var(--ink)}.small{min-height:36px;padding:7px 11px;font-size:12px}.view-button.active{border-color:var(--dark);background:var(--dark);color:#fff}
+    .status{display:none;margin-top:20px;border-radius:14px;background:var(--dark);padding:15px;color:#fff}
+    .status.show{display:block}.status-top{display:flex;justify-content:space-between;gap:14px;font-size:13px;font-weight:800}.percent{color:var(--lime)}
+    .track{height:7px;margin-top:10px;overflow:hidden;border-radius:99px;background:rgba(255,255,255,.14)}.bar{width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--lime),#71dfb3);transition:width .18s}.bar.busy{width:38%;animation:move 1.15s ease-in-out infinite}@keyframes move{from{transform:translateX(-110%)}to{transform:translateX(280%)}}
+    .privacy{margin:14px 0 0;color:var(--muted);font-size:12px}
+    #results{display:none}#results.show{display:block}
+    .section+.section{margin-top:34px;padding-top:34px;border-top:1px solid var(--line)}
+    .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:13px}.tools{display:flex;flex-wrap:wrap;gap:7px}
+    textarea{width:100%;min-height:240px;resize:vertical;border:1px solid #cbd0c7;border-radius:15px;background:#fcfcf7;padding:16px;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.7}.timed-transcript{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px}
+    .points{display:grid;gap:9px;margin:0;padding:0;list-style:none}.points li{position:relative;border:1px solid var(--line);border-radius:14px;background:#fcfcf7;padding:14px 14px 14px 46px}.points li:before{position:absolute;top:13px;left:13px;display:grid;width:24px;height:24px;place-items:center;border-radius:8px;background:var(--lime);content:attr(data-n);font-size:10px;font-weight:900}.point-text{display:block}
+    .empty{border:1px dashed #c5cac0;border-radius:14px;padding:18px;color:var(--muted);text-align:center;font-size:13px}
+    footer{display:flex;justify-content:space-between;gap:15px;border-top:1px solid rgba(16,32,25,.12);padding:22px 0 34px;color:var(--muted);font-size:12px}
+    .toast{position:fixed;right:16px;bottom:16px;max-width:calc(100% - 32px);border-radius:12px;background:var(--dark);padding:11px 14px;color:#fff;font-size:13px;font-weight:800;opacity:0;pointer-events:none;transform:translateY(10px);transition:.18s}.toast.show{opacity:1;transform:none}
+    @media(max-width:720px){.hero{grid-template-columns:1fr;gap:20px;padding-top:32px}.section-head{display:block}.tools{margin-top:10px}.panel{padding:22px 17px}footer{flex-direction:column}.hero p:last-child{font-size:16px}}
+  </style>
+</head>
+<body>
+  <header class="shell">
+    <div class="brand"><span class="logo">VB</span>VideoBrief AI</div>
+    <div class="version">Free beta · English only</div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div><p class="eyebrow">Private browser AI</p><h1>Turn long videos into <span>key points.</span></h1></div>
+      <p>Upload an English MP4 and get a clean transcript plus the essential points—without watching the entire video.</p>
+    </section>
+
+    <section class="app">
+      <div class="panel">
+        <h2>Add your video</h2>
+        <p class="hint">English MP4 video · maximum 10 minutes and 100 MB.</p>
+
+        <label class="drop" id="dropZone" for="fileInput">
+          <div><div class="upload-icon">↑</div><strong>Choose an MP4 video or drop it here</strong><span>MP4 only · H.264 video with AAC audio recommended</span></div>
+        </label>
+        <input id="fileInput" type="file" accept=".mp4,video/mp4">
+
+        <div class="file" id="fileCard">
+          <div>🎬</div><div class="file-main"><div class="file-name" id="fileName"></div><div class="file-meta" id="fileMeta"></div></div>
+          <button class="ghost small" id="removeBtn" type="button">Remove</button>
+        </div>
+
+        <div class="row"><button class="primary" id="transcribeBtn" type="button" disabled>✦ Generate transcript</button></div>
+
+        <div class="status" id="status" role="status" aria-live="polite">
+          <div class="status-top"><span id="statusText"></span><span class="percent" id="statusPercent"></span></div>
+          <div class="track"><div class="bar" id="bar"></div></div>
+        </div>
+        <p class="privacy">🔒 Your media stays in this browser. No account, API key, or server upload.</p>
+      </div>
+
+      <div class="panel" id="results">
+        <div class="section">
+          <div class="section-head"><div><h3 id="transcriptTitle">Clean transcript</h3><p class="hint" id="transcriptMeta"></p></div><div class="tools"><button class="ghost small view-button active" id="cleanView" type="button">Clean</button><button class="ghost small view-button" id="timedView" type="button">Timestamps</button><button class="ghost small" id="copyTranscript">Copy</button><button class="ghost small" id="downloadTranscript">Download</button></div></div>
+          <textarea id="transcript" aria-label="Editable transcript" spellcheck="true"></textarea>
+          <div class="row"><button class="dark" id="pointsBtn" type="button">✦ Generate essential points</button></div>
+          <p class="privacy">Clean view is best for reading. Use the compact timestamp view when editing a dialogue or video.</p>
+        </div>
+
+        <div class="section">
+          <div class="section-head"><div><h3>Essential points</h3><p class="hint">A concise summary grounded in the transcript.</p></div><div class="tools"><button class="ghost small" id="copyPoints" disabled>Copy</button></div></div>
+          <div class="empty" id="pointsEmpty">Generate the essential points to see the summary.</div>
+          <ol class="points" id="points"></ol>
+        </div>
+        <p class="privacy">AI-generated summaries can make mistakes. Verify important facts against the transcript.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell"><span>VideoBrief AI · Free beta</span><span>No uploads · No accounts · No stored videos</span></footer>
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    const TRANSFORMERS_URL = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
+    const MODEL = "onnx-community/whisper-tiny.en";
+    const STUDY_MODEL = "Xenova/flan-t5-small";
+    const MAX_SIZE = 100 * 1024 * 1024;
+    const MAX_DURATION = 10 * 60;
+    const $ = id => document.getElementById(id);
+    const el = {
+      input:$("fileInput"), drop:$("dropZone"), file:$("fileCard"), fileName:$("fileName"), fileMeta:$("fileMeta"),
+      remove:$("removeBtn"), transcribe:$("transcribeBtn"), status:$("status"), statusText:$("statusText"),
+      percent:$("statusPercent"), bar:$("bar"), results:$("results"), transcript:$("transcript"),
+      title:$("transcriptTitle"), cleanView:$("cleanView"), timedView:$("timedView"),
+      meta:$("transcriptMeta"), pointsButton:$("pointsBtn"), points:$("points"), pointsEmpty:$("pointsEmpty"),
+      copyTranscript:$("copyTranscript"),
+      downloadTranscript:$("downloadTranscript"), copyPoints:$("copyPoints"), toast:$("toast")
+    };
+
+    let file = null, duration = 0, aiWorker = null, activeAIRequest = null;
+    let rawText = "", keyPoints = [], toastTimer;
+    let transcriptMode = "clean", transcriptViews = {clean:"",timed:""};
+
+    el.input.addEventListener("change", () => chooseFile(el.input.files[0]));
+    el.remove.addEventListener("click", reset);
+    el.transcribe.addEventListener("click", transcribe);
+    el.pointsButton.addEventListener("click", createKeyPoints);
+    el.copyTranscript.addEventListener("click", () => copy(el.transcript.value, "Transcript copied."));
+    el.downloadTranscript.addEventListener("click", () => download("video-transcript.txt", el.transcript.value));
+    el.copyPoints.addEventListener("click", () => copy(formatPoints(), "Key points copied."));
+    el.transcript.addEventListener("input", () => { rawText = stripTimestamps(el.transcript.value); clearKeyPoints(); updateMeta(); });
+    el.cleanView.addEventListener("click", () => setTranscriptMode("clean"));
+    el.timedView.addEventListener("click", () => setTranscriptMode("timed"));
+
+    ["dragenter","dragover"].forEach(name => el.drop.addEventListener(name, event => { event.preventDefault(); el.drop.classList.add("drag"); }));
+    ["dragleave","drop"].forEach(name => el.drop.addEventListener(name, event => { event.preventDefault(); el.drop.classList.remove("drag"); }));
+    el.drop.addEventListener("drop", event => chooseFile(event.dataTransfer.files[0]));
+
+    async function chooseFile(selected) {
+      reset(false);
+      if (!selected) return;
+      if (!/\.mp4$/i.test(selected.name)) return fail("Only MP4 video files are supported in this beta.");
+      if (selected.size > MAX_SIZE) return fail("The file is over 100 MB.");
+      setStatus("Checking the media file…", null, true);
+      try {
+        duration = await mediaDuration(selected);
+        if (!Number.isFinite(duration) || duration <= 0) throw new Error("Could not read this file.");
+        if (duration > MAX_DURATION) throw new Error("The file is longer than 10 minutes.");
+        file = selected;
+        el.fileName.textContent = selected.name;
+        el.fileMeta.textContent = `${formatBytes(selected.size)} · ${clock(duration)}`;
+        el.file.classList.add("show"); el.transcribe.disabled = false; hideStatus();
+      } catch (error) { fail(error.message); }
+    }
+
+    async function transcribe() {
+      if (!file) return;
+      busy(true); clearResults();
+      try {
+        setStatus("Extracting audio…", null, true);
+        let audio;
+        try {
+          audio = await whisperAudio(file);
+        } catch (audioError) {
+          throw new Error(`MEDIA_DECODE:${audioError?.message || "Audio extraction failed."}`);
+        }
+        setStatus("Preparing private local transcription…", null, true);
+        const result = await runAI("transcribe", {audio}, [audio.buffer]);
+        rawText = (result.text || "").replace(/\s+/g," ").trim();
+        if (!rawText) throw new Error("Whisper returned an empty transcript.");
+        transcriptViews={clean:cleanTranscript(rawText),timed:compactTimestamps(result)};
+        transcriptMode="timed";
+        setTranscriptMode("clean",false);
+        updateMeta(); el.results.classList.add("show"); setStatus("Transcript complete.",100,false);
+        el.results.scrollIntoView({behavior:"smooth",block:"start"});
+      } catch (error) {
+        console.error(error); fail(friendlyError(error));
+      } finally { busy(false); }
+    }
+
+    function createAIWorker() {
+      const workerSource = `
+        import { pipeline } from "${TRANSFORMERS_URL}";
+
+        const WHISPER_MODEL = "${MODEL}";
+        const NOTES_MODEL = "${STUDY_MODEL}";
+        let transcriber = null;
+        let notesGenerator = null;
+
+        function sendProgress(model, data) {
+          if (data?.status !== "progress" || typeof data.progress !== "number") return;
+          self.postMessage({
+            type:"progress",
+            model,
+            progress:Math.max(0, Math.min(100, Math.round(data.progress)))
+          });
+        }
+
+        async function loadWhisper() {
+          const attempts = [];
+
+          if (self.navigator?.gpu) {
+            attempts.push({
+              name:"GPU acceleration",
+              options:{
+                device:"webgpu",
+                dtype:{
+                  encoder_model:"fp32",
+                  decoder_model_merged:"q4"
+                }
+              }
+            });
+          }
+
+          attempts.push(
+            {
+              name:"fast CPU mode",
+              options:{device:"wasm", dtype:"int8"}
+            },
+            {
+              name:"compatibility CPU mode",
+              options:{device:"wasm", dtype:"fp32"}
+            }
+          );
+
+          let lastError = null;
+
+          for (const attempt of attempts) {
+            try {
+              self.postMessage({
+                type:"status",
+                message:"Loading Whisper with " + attempt.name + "…"
+              });
+
+              const model = await pipeline(
+                "automatic-speech-recognition",
+                WHISPER_MODEL,
+                {
+                  ...attempt.options,
+                  progress_callback:data => sendProgress("whisper", data)
+                }
+              );
+
+              self.postMessage({
+                type:"status",
+                message:"Whisper ready · " + attempt.name
+              });
+
+              return model;
+            } catch (error) {
+              lastError = error;
+              console.warn(attempt.name + " failed", error);
+            }
+          }
+
+          throw lastError || new Error("No compatible Whisper mode is available.");
+        }
+
+        self.onmessage = async event => {
+          const {task, payload} = event.data;
+
+          try {
+            if (task === "transcribe") {
+              if (!transcriber) {
+                transcriber = await loadWhisper();
+              }
+
+              self.postMessage({type:"status", message:"Transcribing locally… Keep this tab open."});
+              const output = await transcriber(payload.audio, {
+                chunk_length_s:30,
+                stride_length_s:5,
+                return_timestamps:true
+              });
+
+              self.postMessage({
+                type:"result",
+                task,
+                result:{
+                  text:output.text || "",
+                  chunks:(output.chunks || []).map(chunk => ({
+                    text:chunk.text || "",
+                    timestamp:chunk.timestamp || [0, null]
+                  }))
+                }
+              });
+              return;
+            }
+
+            if (task === "summarize") {
+              if (!notesGenerator) {
+                self.postMessage({type:"status", message:"Loading the key-point model…"});
+                notesGenerator = await pipeline("text2text-generation", NOTES_MODEL, {
+                  dtype:"q8",
+                  progress_callback:data => sendProgress("notes", data)
+                });
+              }
+
+              self.postMessage({type:"status", message:"Extracting the essential points…"});
+              const output = await notesGenerator(payload.prompt, {
+                max_new_tokens:180,
+                do_sample:false,
+                repetition_penalty:1.15
+              });
+
+              self.postMessage({
+                type:"result",
+                task,
+                result:(output?.[0]?.generated_text || "").trim()
+              });
+            }
+          } catch (error) {
+            self.postMessage({
+              type:"error",
+              task,
+              message:error?.message || "The local AI worker failed."
+            });
+          }
+        };
+      `;
+
+      const workerURL = URL.createObjectURL(new Blob([workerSource], {type:"text/javascript"}));
+      const worker = new Worker(workerURL, {type:"module"});
+      setTimeout(() => URL.revokeObjectURL(workerURL), 1000);
+
+      worker.onmessage = event => {
+        const message = event.data;
+
+        if (message.type === "status") {
+          setStatus(message.message, null, true);
+          return;
+        }
+
+        if (message.type === "progress") {
+          const label = message.model === "whisper" ? "Whisper" : "Key-point";
+          if (message.progress >= 100) {
+            setStatus(`${label} model ready · preparing…`, null, true);
+          } else {
+            setStatus(`Downloading the ${label.toLowerCase()} model…`, message.progress, false);
+          }
+          return;
+        }
+
+        if (!activeAIRequest || message.task !== activeAIRequest.task) return;
+
+        const request = activeAIRequest;
+        activeAIRequest = null;
+
+        if (message.type === "result") request.resolve(message.result);
+        else if (message.type === "error") request.reject(new Error(message.message));
+      };
+
+      worker.onerror = event => {
+        if (activeAIRequest) {
+          activeAIRequest.reject(new Error(event.message || "The browser could not start the local AI worker."));
+          activeAIRequest = null;
+        }
+        worker.terminate();
+        aiWorker = null;
+      };
+
+      return worker;
+    }
+
+    function runAI(task, payload, transfer = []) {
+      if (activeAIRequest) return Promise.reject(new Error("Another local AI task is already running."));
+      if (!aiWorker) aiWorker = createAIWorker();
+
+      return new Promise((resolve, reject) => {
+        activeAIRequest = {task, resolve, reject};
+        aiWorker.postMessage({task, payload}, transfer);
+      });
+    }
+
+    async function whisperAudio(mediaFile) {
+      const Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) throw new Error("Audio processing is not supported in this browser.");
+      const context = new Context();
+      try {
+        if (context.state === "suspended") await context.resume();
+        const decoded = await context.decodeAudioData((await mediaFile.arrayBuffer()).slice(0));
+        const rate = 16000;
+        const offline = new OfflineAudioContext(1,Math.ceil(decoded.duration*rate),rate);
+        const source = offline.createBufferSource();
+        source.buffer = decoded; source.connect(offline.destination); source.start();
+        const rendered = await offline.startRendering();
+        return new Float32Array(rendered.getChannelData(0));
+      } finally { await context.close(); }
+    }
+
+    async function createKeyPoints() {
+      rawText = stripTimestamps(el.transcript.value);
+      if (words(rawText).length < 18) return toast("The transcript is too short.");
+
+      const originalLabel = el.pointsButton.textContent;
+      const candidates = extractPoints(rawText,5);
+      clearKeyPoints();
+      busy(true);
+      el.pointsButton.disabled = true;
+      el.pointsButton.textContent = "Generating essential points…";
+
+      try {
+        setStatus("Finding the main ideas…",20,false);
+        const fallbackNotes=smartRewritePoints(candidates);
+        let generatedNotes=[];
+
+        try {
+          generatedNotes=await generateBetterNotes(candidates);
+        } catch (modelError) {
+          console.warn("Key-point model unavailable; using the local structured summarizer.",modelError);
+        }
+
+        keyPoints=mergeNotes(generatedNotes,fallbackNotes,candidates);
+        renderPoints();
+        el.copyPoints.disabled=!keyPoints.length;
+        setStatus("Essential points ready.",100,false);
+        toast("Essential points ready.");
+      } catch (error) {
+        console.error(error);
+        fail("The essential points could not be generated. Try again.");
+      } finally {
+        busy(false);
+        el.pointsButton.disabled=false;
+        el.pointsButton.textContent=originalLabel;
+      }
+    }
+
+    async function generateBetterNotes(candidates) {
+      const source=candidates.map((fact,index)=>`${index+1}. ${fact}`).join("\n");
+      const prompt=`Rewrite these English transcript facts into ${candidates.length} clear essential points. Combine context when needed, remove first-person filler, preserve names and numbers, and do not invent facts. Each point must be one sentence with no more than 24 words. Return only a numbered list.\n\nFACTS:\n${source}`;
+      const text=await runAI("summarize",{prompt});
+      return parseGeneratedNotes(text);
+    }
+
+    function parseGeneratedNotes(text) {
+      let notes=text.split(/\n+/).map(line=>line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/,"").trim()).filter(Boolean);
+      if (notes.length<2) notes=splitSentences(text.replace(/^\s*(?:[-*•]|\d+[.)])\s*/,""));
+      return notes.map(cleanSentence).filter(note=>words(note).length>=5&&words(note).length<=32).slice(0,5);
+    }
+
+    function mergeNotes(generated,fallback,sources) {
+      const aligned=alignGeneratedNotes(generated,sources);
+      return fallback.map((safe,index)=>{
+        const candidate=aligned[index]||"";
+        const source=sources[index]||"";
+        if (!isGroundedNote(candidate,source)) return safe;
+        const candidateLength=words(candidate).length;
+        const sourceLength=words(source).length;
+        if (similarity(candidate,source)>.82&&candidateLength>=sourceLength*.85) return safe;
+        return candidate;
+      });
+    }
+
+    function alignGeneratedNotes(generated,sources) {
+      const unused=generated.map((note,index)=>({note,index}));
+      return sources.map(source=>{
+        let winner=-1,score=0;
+        unused.forEach((item,index)=>{
+          const value=contentSimilarity(item.note,source);
+          if (value>score) {score=value;winner=index;}
+        });
+        if (winner<0||score<.28) return "";
+        return unused.splice(winner,1)[0].note;
+      });
+    }
+
+    function isGroundedNote(note,source) {
+      if (!note||/\b(?:i|we|our|you)\b/i.test(note)) return false;
+      const length=words(note).length;
+      if (length<5||length>28) return false;
+      const candidateTerms=contentTerms(note);
+      const sourceTerms=new Set(contentTerms(source));
+      const overlap=candidateTerms.filter(term=>sourceTerms.has(term)).length;
+      if (overlap<2||overlap/Math.max(candidateTerms.length,1)<.45) return false;
+      const sourceNumbers=new Set(source.match(/\b\d[\d,.]*(?:-\d+)?\b/g)||[]);
+      const candidateNumbers=note.match(/\b\d[\d,.]*(?:-\d+)?\b/g)||[];
+      if (candidateNumbers.some(number=>!sourceNumbers.has(number))) return false;
+      const sourceLower=source.toLowerCase();
+      const names=(note.match(/\b[A-Z][A-Za-z0-9.-]{2,}\b/g)||[]).filter(name=>!/[.!?]\s*$/.test(note.slice(0,note.indexOf(name)))&&!/^(?:The|This|That|Users|People|Another|Today|Its)$/i.test(name));
+      return !names.some(name=>!sourceLower.includes(name.toLowerCase()));
+    }
+
+    function contentTerms(text) {
+      const stop=new Set("the a an and or but to of in on for with at by from is are was were be been being it this that these those i you he she we they as so do does did have has had can could would should will just also more some into about their our your its than then there here new latest very only one everyone people team model models".split(" "));
+      return words(text).filter(word=>word.length>2&&!stop.has(word));
+    }
+
+    function contentSimilarity(first,second) {
+      const a=contentTerms(first),b=new Set(contentTerms(second));
+      if (!a.length||!b.size) return 0;
+      const overlap=a.filter(term=>b.has(term)).length;
+      return overlap/Math.min(a.length,b.size);
+    }
+
+    function smartRewritePoints(sources) {
+      let currentEntity="";
+      return sources.map(source=>{
+        const found=findEntity(source);
+        const note=rewriteKeyPoint(source,currentEntity||found);
+        if (found) currentEntity=found;
+        return note;
+      });
+    }
+
+    function rewriteKeyPoint(source,entity) {
+      let text=source.replace(/^(?:well|so|now|basically|essentially|in other words|i am proud to share that|i'm proud to share that)\s*[,—:-]?\s*/i,"").trim();
+      let match=text.match(/we(?:'re| are)\s+open[- ]sourcing\s+(?:a\s+)?(.+?)\s+(?:that\s+we(?:'re| are)\s+calling|called)\s+([^,.]+)/i);
+      if (match) return cleanSentence(`${match[2]} is a ${match[1]} being released as open source`);
+
+      match=text.match(/in the coming weeks,?\s*we(?:'re| are)\s+(?:also\s+)?going to open the weights for\s+([^,]+),?\s*(?:our|the)\s+([^,.]+)/i);
+      if (match) {
+        const description=/^(?:a|an|the)\b/i.test(match[2])?match[2]:`the ${match[2]}`;
+        return cleanSentence(`${match[1]}'s model weights are planned for release in the coming weeks; it is ${description}`);
+      }
+
+      match=text.match(/we(?:'re| are)\s+(?:also\s+)?working to make sure that\s+(?:that\s+)?everyone has\s+(.+)/i);
+      if (match) {
+        const goal=match[1].replace(/\byour behalf\b/gi,"people's behalf").replace(/\byour\b/gi,"people's");
+        return cleanSentence(`The stated goal is for everyone to have ${goal}`);
+      }
+
+      match=text.match(/you can use (?:our|the) latest models in (?:the\s+)?(.+?)(?:,\s*and|\.|$)/i);
+      if (match) return cleanSentence(`The latest models are available in the ${match[1]}`);
+
+      if (entity) text=text.replace(/^it(?:'s| is)\s+/i,`${entity} is `);
+      text=text.replace(/\b(\d+)\s+(billion|million)\s+(parameter)\b/gi,"$1-$2-$3");
+      text=text.replace(/\byour laptop\b/gi,"laptops").replace(/\band it(?:'s| is)\b/gi,"and is");
+      text=text.replace(/^we(?:'re| are) going to\s+/i,"The team plans to ").replace(/^we(?:'re| are)\s+/i,"The team is ");
+      text=text.replace(/^you can\s+/i,"Users can ").replace(/\bour\b/gi,"the team's");
+      text=text.replace(/\s+/g," ");
+      if (words(text).length>30) {
+        const cut=text.split(/;|—|\s+and\s+(?=(?:it|this|they|we|the|i)\b)/i)[0].trim();
+        text=words(cut).length>=8?cut:text.split(/\s+/).slice(0,30).join(" ");
+      }
+      return cleanSentence(text);
+    }
+
+    function findEntity(text) {
+      const matches=text.match(/\b(?:[A-Z][a-zA-Z0-9.-]+(?:\s+[A-Z][a-zA-Z0-9.-]+){1,3})(?:\s+\d+(?:\.\d+)*)?\b/g)||[];
+      return matches.find(value=>!/^(?:In The|I Am|The Team|Coming Weeks)$/i.test(value))||"";
+    }
+
+    function cleanSentence(text) {
+      const clean=text.replace(/^["']|["']$/g,"").replace(/\s+/g," ").trim();
+      return clean ? clean[0].toUpperCase()+clean.slice(1).replace(/[.!?]*$/,".") : clean;
+    }
+
+    function extractPoints(text,max) {
+      const sentences = splitSentences(text).filter(s => words(s).length >= 6 && s.length >= 30);
+      const stop = new Set("the a an and or but to of in on for with at by from is are was were be been it this that these those i you he she we they as so do does did have has had can could would should just also more some".split(" "));
+      const frequency = new Map();
+      const tokens = sentences.map(s => words(s).filter(w => w.length > 2 && !stop.has(w)));
+      tokens.forEach(list => new Set(list).forEach(w => frequency.set(w,(frequency.get(w)||0)+1)));
+      const scored = sentences.map((text,index) => ({text,index,score:tokens[index].reduce((sum,w)=>sum+(frequency.get(w)||0),0)/Math.sqrt(Math.max(tokens[index].length,1))+(index<2?1:0)})).sort((a,b)=>b.score-a.score);
+      const chosen=[];
+      for (const candidate of scored) {
+        if (chosen.some(item => similarity(item.text,candidate.text)>.48)) continue;
+        chosen.push(candidate); if (chosen.length>=Math.min(max,sentences.length)) break;
+      }
+      return chosen.sort((a,b)=>a.index-b.index).map(x=>x.text.trim());
+    }
+
+    function renderPoints() {
+      el.points.replaceChildren(); el.pointsEmpty.hidden = keyPoints.length>0;
+      keyPoints.forEach((point,index) => {
+        const li=document.createElement("li"); li.dataset.n=String(index+1).padStart(2,"0");
+        const text=document.createElement("span"); text.className="point-text"; text.textContent=point;
+        li.append(text); el.points.appendChild(li);
+      });
+    }
+
+    function cleanTranscript(text) {
+      const sentences=splitSentences(text);
+      if (!sentences.length) return text;
+      const paragraphs=[];
+      for (let i=0;i<sentences.length;i+=2) paragraphs.push(sentences.slice(i,i+2).join(" "));
+      return paragraphs.join("\n\n");
+    }
+
+    function compactTimestamps(result) {
+      if (!result.chunks?.length) return result.text||"";
+      return result.chunks.map(chunk=>`${clock(chunk.timestamp?.[0]||0)}  ${(chunk.text||"").trim()}`).join("\n");
+    }
+
+    function setTranscriptMode(mode,saveCurrent=true) {
+      if (saveCurrent) transcriptViews[transcriptMode]=el.transcript.value;
+      transcriptMode=mode;
+      el.transcript.value=transcriptViews[mode]||"";
+      el.title.textContent=mode==="clean"?"Clean transcript":"Timestamped transcript";
+      el.cleanView.classList.toggle("active",mode==="clean");
+      el.timedView.classList.toggle("active",mode==="timed");
+      el.transcript.classList.toggle("timed-transcript",mode==="timed");
+      rawText=stripTimestamps(el.transcript.value); updateMeta();
+    }
+
+    function stripTimestamps(text){return text.replace(/^\s*(?:\[\d{1,3}:\d{2}\s*[–-]\s*(?:\d{1,3}:\d{2}|--:--)\]|\d{1,3}:\d{2})\s*/gm,"").replace(/\s+/g," ").trim()}
+    function splitSentences(text){return (text.replace(/(\d)\.(\d)/g,"$1__DOT__$2").match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[]).map(s=>s.replace(/__DOT__/g,".").trim()).filter(Boolean)}
+    function words(text){return text.toLowerCase().replace(/[^a-z0-9'.-]/g," ").split(/\s+/).filter(Boolean)}
+    function similarity(a,b){const A=new Set(words(a)),B=new Set(words(b)),common=[...A].filter(w=>B.has(w)).length,union=new Set([...A,...B]).size;return union?common/union:0}
+    function formatPoints(){return keyPoints.map((p,i)=>`${i+1}. ${p}`).join("\n\n")}
+    function updateMeta(){el.meta.textContent=`${words(rawText).length.toLocaleString()} words · ${clock(duration)} · English`}
+    function mediaDuration(f){return new Promise((resolve,reject)=>{const m=document.createElement("video"),url=URL.createObjectURL(f);m.preload="metadata";m.onloadedmetadata=()=>{URL.revokeObjectURL(url);resolve(m.duration)};m.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("This MP4 cannot be decoded by your browser. Export it as MP4 with H.264 video and AAC audio."))};m.src=url})}
+    function setStatus(message,percent=null,indeterminate=false){el.status.classList.add("show");el.statusText.textContent=message;el.percent.textContent=typeof percent==="number"?`${percent}%`:"";el.bar.classList.toggle("busy",indeterminate);el.bar.style.width=indeterminate?"38%":`${percent||0}%`}
+    function hideStatus(){el.status.classList.remove("show");el.bar.classList.remove("busy");el.bar.style.width="0";el.percent.textContent=""}
+    function fail(message){setStatus(`Error: ${message}`,0,false)}
+    function friendlyError(error){const m=error?.message||"Something went wrong.";if(/^MEDIA_DECODE:/i.test(m))return"This MP4 cannot be decoded. Export it as MP4 with H.264 video and AAC audio, then try again.";if(/memory|allocation|out of bounds/i.test(m))return"This device ran out of memory. Try a shorter video.";if(/fetch|network|download|404/i.test(m))return"The Whisper model could not download. Check your internet and refresh the page.";if(/worker|module script/i.test(m))return"The browser could not start the private AI worker. Refresh the page and try again.";return`Local AI error: ${m}`}
+    function busy(value){el.transcribe.disabled=value||!file;el.input.disabled=value;el.remove.disabled=value}
+    function clearKeyPoints(){keyPoints=[];el.points.replaceChildren();el.pointsEmpty.hidden=false;el.copyPoints.disabled=true}
+    function clearResults(){rawText="";el.transcript.value="";el.results.classList.remove("show");clearKeyPoints()}
+    function reset(scroll=true){file=null;duration=0;transcriptViews={clean:"",timed:""};transcriptMode="clean";el.input.value="";el.file.classList.remove("show");el.transcribe.disabled=true;clearResults();hideStatus();if(scroll)el.drop.scrollIntoView({behavior:"smooth",block:"center"})}
+    function clock(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0));return`${String(Math.floor(n/60)).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`}
+    function formatBytes(bytes){return bytes<1048576?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/1048576).toFixed(1)} MB`}
+    async function copy(text,message){if(!text.trim())return;try{await navigator.clipboard.writeText(text)}catch{const t=document.createElement("textarea");t.value=text;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove()}toast(message)}
+    function download(name,text){if(!text.trim())return;const url=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"})),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+    function toast(message){clearTimeout(toastTimer);el.toast.textContent=message;el.toast.classList.add("show");toastTimer=setTimeout(()=>el.toast.classList.remove("show"),2200)}
+  </script>
+</body>
+</html>
