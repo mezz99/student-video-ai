@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#111714">
-  <title>VideoBrief AI</title>
+  <title>VideoBrief AI — YouTube & MP4 Notes</title>
   <style>
     :root {
       --ink:#102019; --muted:#607068; --paper:#f5f3ec; --card:#fffef9;
@@ -40,6 +40,8 @@
     #fileInput{position:absolute;width:1px;height:1px;opacity:0}
     .input-divider{display:flex;align-items:center;gap:12px;margin:22px 0;color:var(--muted);font-size:12px;font-weight:850;text-transform:uppercase;letter-spacing:.08em}.input-divider:before,.input-divider:after{height:1px;flex:1;background:var(--line);content:""}
     .url-box{border:1px solid var(--line);border-radius:18px;background:#fafaf5;padding:16px}.url-box label{display:block;margin-bottom:9px;font-size:13px;font-weight:900}.url-row{display:flex;gap:9px}.url-row input{min-width:0;min-height:46px;flex:1;border:1px solid #cbd0c7;border-radius:12px;background:#fff;padding:10px 13px;color:var(--ink)}.url-note{margin:9px 0 0;color:var(--muted);font-size:12px}
+    .youtube-workspace{display:none;margin-top:16px;border:1px solid var(--line);border-radius:20px;background:#fff;padding:16px}.youtube-workspace.show{display:grid;grid-template-columns:minmax(240px,.85fr) minmax(280px,1.15fr);gap:18px}.youtube-frame{overflow:hidden;align-self:start;border-radius:15px;background:#0b0e0c;aspect-ratio:16/9}.youtube-frame iframe{width:100%;height:100%;border:0}.youtube-copy h3{margin-bottom:8px}.youtube-steps{margin:8px 0 13px;padding-left:22px;color:var(--muted);font-size:13px}.youtube-steps li+li{margin-top:5px}.youtube-link{display:inline-flex;margin-bottom:12px;color:#b43b19;font-size:13px;font-weight:850}.youtube-transcript{min-height:170px}.limit-card{margin-top:14px;border-left:4px solid var(--lime);background:#f5f8ec;padding:12px 14px;color:var(--muted);font-size:12px}
+    @media(max-width:760px){.youtube-workspace.show{grid-template-columns:1fr}}
     .file{display:none;align-items:center;gap:12px;margin-top:14px;border:1px solid var(--line);border-radius:15px;background:#fafaf5;padding:13px 15px}
     .file.show{display:flex}.file-main{min-width:0;flex:1}.file-name{overflow:hidden;font-weight:850;text-overflow:ellipsis;white-space:nowrap}.file-meta{color:var(--muted);font-size:12px}
     .row{display:flex;flex-wrap:wrap;gap:11px;margin-top:20px}
@@ -65,49 +67,65 @@
 <body>
   <header class="shell">
     <div class="brand"><span class="logo">VB</span>VideoBrief AI</div>
-    <div class="version">Beta v7 · English</div>
+    <div class="version">Beta v8 · YouTube first</div>
   </header>
 
   <main class="shell">
     <section class="hero">
-      <div><p class="eyebrow">Private browser AI</p><h1>Turn long videos into <span>key points.</span></h1></div>
-      <p>Upload an English MP4—or paste a direct MP4 link—and get a clean transcript plus the essential points without watching the entire video.</p>
+      <div><p class="eyebrow">Private browser AI</p><h1>Turn long videos into <span>useful notes.</span></h1></div>
+      <p>Start with a YouTube video and its transcript—or upload your own MP4. VideoBrief cleans the transcript and generates grounded key points locally in your browser.</p>
     </section>
 
     <section class="app">
       <div class="panel">
-        <h2>Add your video</h2>
-        <p class="hint">English MP4 video · upload or direct link · maximum 10 minutes and 100 MB.</p>
+        <h2>Study a YouTube video</h2>
+        <p class="hint">Paste a YouTube link, open its transcript, and let VideoBrief turn the text into clean notes. No API key, account, or server bill.</p>
 
+        <div class="url-box">
+          <label for="videoUrl">YouTube video URL</label>
+          <div class="url-row">
+            <input id="videoUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://www.youtube.com/watch?v=..." aria-describedby="urlHelp">
+            <button class="dark" id="loadUrlBtn" type="button">Open study workspace</button>
+          </div>
+          <p class="url-note" id="urlHelp">VideoBrief embeds the official player. Because public caption downloads are not available safely without owner authorization, you copy the transcript from YouTube and paste it once below.</p>
+        </div>
+
+        <div class="youtube-workspace" id="youtubeWorkspace">
+          <div class="youtube-frame"><iframe id="youtubeFrame" title="YouTube video preview" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+          <div class="youtube-copy">
+            <h3>Bring the transcript</h3>
+            <ol class="youtube-steps">
+              <li>Open the video on YouTube.</li>
+              <li>Choose <strong>Show transcript</strong> from the video description/menu.</li>
+              <li>Copy the transcript and paste it here. Timestamps are accepted.</li>
+            </ol>
+            <a class="youtube-link" id="openYoutube" href="#" target="_blank" rel="noopener">Open this video on YouTube ↗</a>
+            <textarea class="youtube-transcript" id="youtubeTranscript" placeholder="Paste the YouTube transcript here…" aria-label="YouTube transcript"></textarea>
+            <div class="row"><button class="primary" id="useTranscriptBtn" type="button">✦ Turn transcript into notes</button><button class="ghost" id="clearYoutubeBtn" type="button">Clear</button></div>
+          </div>
+        </div>
+
+        <div class="input-divider"><span>or upload your own video</span></div>
+        <p class="hint">English MP4 · up to 30 minutes and 300 MB. Large files need a modern desktop and can take time because processing is local.</p>
         <label class="drop" id="dropZone" for="fileInput">
-          <div><div class="upload-icon">↑</div><strong>Choose an MP4 video or drop it here</strong><span>MP4 only · H.264 video with AAC audio recommended</span></div>
+          <div><div class="upload-icon">↑</div><strong>Choose an MP4 video or drop it here</strong><span>MP4 · H.264 video with AAC audio recommended</span></div>
         </label>
         <input id="fileInput" type="file" accept=".mp4,video/mp4">
-
-        <div class="input-divider"><span>or paste a link</span></div>
-        <div class="url-box">
-          <label for="videoUrl">Direct MP4 video URL</label>
-          <div class="url-row">
-            <input id="videoUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/video.mp4" aria-describedby="urlHelp">
-            <button class="dark" id="loadUrlBtn" type="button">Use this link</button>
-          </div>
-          <p class="url-note" id="urlHelp">Works when the address points directly to a public MP4 and the host allows browser access. YouTube, Instagram, TikTok and other webpage links are not supported in this private beta.</p>
-        </div>
 
         <div class="file" id="fileCard">
           <div>🎬</div><div class="file-main"><div class="file-name" id="fileName"></div><div class="file-meta" id="fileMeta"></div></div>
           <button class="ghost small" id="removeBtn" type="button">Remove</button>
         </div>
 
-        <div class="row"><button class="primary" id="transcribeBtn" type="button" disabled>✦ Generate transcript</button></div>
+        <div class="row"><button class="primary" id="transcribeBtn" type="button" disabled>✦ Generate transcript from MP4</button></div>
 
         <div class="status" id="status" role="status" aria-live="polite">
           <div class="status-top"><span id="statusText"></span><span class="percent" id="statusPercent"></span></div>
           <div class="track"><div class="bar" id="bar"></div></div>
         </div>
-        <p class="privacy">🔒 Your media stays in this browser. A linked MP4 is fetched directly to your device; it is not uploaded to a VideoBrief server.</p>
+        <div class="limit-card"><strong>Why the one-time transcript paste?</strong> It keeps the tool free, private, and compatible with long YouTube videos without downloading or separating YouTube audio.</div>
+        <p class="privacy">🔒 Uploaded MP4s and pasted transcripts stay in this browser. The embedded YouTube player connects directly to YouTube; VideoBrief stores nothing.</p>
       </div>
-
       <div class="panel" id="results">
         <div class="section">
           <div class="section-head"><div><h3 id="transcriptTitle">Clean transcript</h3><p class="hint" id="transcriptMeta"></p></div><div class="tools"><button class="ghost small view-button active" id="cleanView" type="button">Clean</button><button class="ghost small view-button" id="timedView" type="button">Timestamps</button><button class="ghost small" id="copyTranscript">Copy</button><button class="ghost small" id="downloadTranscript">Download</button></div></div>
@@ -126,18 +144,22 @@
     </section>
   </main>
 
-  <footer class="shell"><span>VideoBrief AI · Free beta</span><span>No uploads · No accounts · No stored videos</span></footer>
+  <footer class="shell"><span>VideoBrief AI · Free beta v8</span><span>$0 · no accounts · no stored transcripts</span></footer>
   <div class="toast" id="toast"></div>
 
   <script type="module">
     const TRANSFORMERS_URL = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
     const MODEL = "onnx-community/whisper-tiny.en";
     const STUDY_MODEL = "Xenova/flan-t5-small";
-    const MAX_SIZE = 100 * 1024 * 1024;
-    const MAX_DURATION = 10 * 60;
+    const MAX_SIZE = 300 * 1024 * 1024;
+    const MAX_DURATION = 30 * 60;
+    const MAX_TRANSCRIPT_CHARS = 250000;
     const $ = id => document.getElementById(id);
     const el = {
-      input:$("fileInput"), drop:$("dropZone"), url:$("videoUrl"), loadUrl:$("loadUrlBtn"), file:$("fileCard"), fileName:$("fileName"), fileMeta:$("fileMeta"),
+      input:$("fileInput"), drop:$("dropZone"), url:$("videoUrl"), loadUrl:$("loadUrlBtn"),
+      youtubeWorkspace:$("youtubeWorkspace"), youtubeFrame:$("youtubeFrame"), openYoutube:$("openYoutube"),
+      youtubeTranscript:$("youtubeTranscript"), useTranscript:$("useTranscriptBtn"), clearYoutube:$("clearYoutubeBtn"),
+      file:$("fileCard"), fileName:$("fileName"), fileMeta:$("fileMeta"),
       remove:$("removeBtn"), transcribe:$("transcribeBtn"), status:$("status"), statusText:$("statusText"),
       percent:$("statusPercent"), bar:$("bar"), results:$("results"), transcript:$("transcript"),
       title:$("transcriptTitle"), cleanView:$("cleanView"), timedView:$("timedView"),
@@ -147,12 +169,14 @@
     };
 
     let file = null, duration = 0, aiWorker = null, activeAIRequest = null;
-    let rawText = "", keyPoints = [], toastTimer;
+    let rawText = "", keyPoints = [], toastTimer, youtubeId = "", sourceLabel = "English";
     let transcriptMode = "clean", transcriptViews = {clean:"",timed:""};
 
     el.input.addEventListener("change", () => chooseFile(el.input.files[0]));
-    el.loadUrl.addEventListener("click", loadVideoUrl);
-    el.url.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); loadVideoUrl(); } });
+    el.loadUrl.addEventListener("click", loadYouTube);
+    el.url.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); loadYouTube(); } });
+    el.useTranscript.addEventListener("click", useYouTubeTranscript);
+    el.clearYoutube.addEventListener("click", () => reset(false));
     el.remove.addEventListener("click", reset);
     el.transcribe.addEventListener("click", transcribe);
     el.pointsButton.addEventListener("click", createKeyPoints);
@@ -167,62 +191,75 @@
     ["dragleave","drop"].forEach(name => el.drop.addEventListener(name, event => { event.preventDefault(); el.drop.classList.remove("drag"); }));
     el.drop.addEventListener("drop", event => chooseFile(event.dataTransfer.files[0]));
 
-    async function chooseFile(selected, keepUrl=false) {
-      reset(false, keepUrl);
+    async function chooseFile(selected) {
+      reset(false);
       if (!selected) return;
-      if (!/\.mp4$/i.test(selected.name)) return fail("Only MP4 video files are supported in this beta.");
-      if (selected.size > MAX_SIZE) return fail("The file is over 100 MB.");
+      if (!/\.mp4$/i.test(selected.name)) return fail("Only MP4 video files are supported.");
+      if (selected.size > MAX_SIZE) return fail("The file is over 300 MB.");
       setStatus("Checking the media file…", null, true);
       try {
         duration = await mediaDuration(selected);
         if (!Number.isFinite(duration) || duration <= 0) throw new Error("Could not read this file.");
-        if (duration > MAX_DURATION) throw new Error("The file is longer than 10 minutes.");
+        if (duration > MAX_DURATION) throw new Error("The file is longer than 30 minutes.");
         file = selected;
+        sourceLabel = `MP4 · ${clock(duration)} · English`;
         el.fileName.textContent = selected.name;
         el.fileMeta.textContent = `${formatBytes(selected.size)} · ${clock(duration)}`;
         el.file.classList.add("show"); el.transcribe.disabled = false; hideStatus();
       } catch (error) { fail(error.message); }
     }
 
-    async function loadVideoUrl() {
-      const value = el.url.value.trim();
-      if (!value) return fail("Paste a direct MP4 link first.");
-
+    function extractYouTubeId(value) {
       let parsed;
-      try { parsed = new URL(value); }
-      catch { return fail("Enter a complete URL beginning with https://"); }
-
-      if (parsed.protocol !== "https:") return fail("For privacy and security, the video link must use https://");
-      if (/(^|\.)(youtube\.com|youtu\.be|instagram\.com|tiktok\.com|vimeo\.com)$/i.test(parsed.hostname)) {
-        return fail("This is a webpage link, not a direct MP4. Download your own video, then upload the MP4 file instead.");
+      try { parsed = new URL(value); } catch { return ""; }
+      const host = parsed.hostname.replace(/^www\./i,"").toLowerCase();
+      let id = "";
+      if (host === "youtu.be") {
+        id = parsed.pathname.split("/").filter(Boolean)[0] || "";
+      } else if (host === "youtube.com" || host.endsWith(".youtube.com")) {
+        if (parsed.pathname === "/watch") id = parsed.searchParams.get("v") || "";
+        else {
+          const match = parsed.pathname.match(/^\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})/);
+          id = match?.[1] || "";
+        }
       }
+      return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
+    }
 
-      el.loadUrl.disabled = true;
-      setStatus("Loading the linked video into your browser…", null, true);
-      try {
-        const response = await fetch(parsed.href, {mode:"cors", credentials:"omit"});
-        if (!response.ok) throw new Error(`The video host returned ${response.status}.`);
+    function loadYouTube() {
+      const value = el.url.value.trim();
+      if (!value) return fail("Paste a YouTube link first.");
+      const id = extractYouTubeId(value);
+      if (!id) return fail("Use a complete YouTube video link, youtu.be link, Short, or Live link.");
 
-        const announcedSize = Number(response.headers.get("content-length")) || 0;
-        if (announcedSize > MAX_SIZE) throw new Error("The linked file is over 100 MB.");
+      file = null; duration = 0; youtubeId = id; sourceLabel = "YouTube transcript · English";
+      el.input.value = ""; el.file.classList.remove("show"); el.transcribe.disabled = true;
+      clearResults(); hideStatus();
+      const watchUrl = `https://www.youtube.com/watch?v=${id}`;
+      el.openYoutube.href = watchUrl;
+      el.youtubeFrame.src = `https://www.youtube.com/embed/${id}?rel=0&cc_load_policy=1`;
+      el.youtubeWorkspace.classList.add("show");
+      el.youtubeTranscript.focus();
+      el.youtubeWorkspace.scrollIntoView({behavior:"smooth",block:"center"});
+    }
 
-        const type = (response.headers.get("content-type") || "").toLowerCase();
-        const looksLikeMp4 = /\.mp4$/i.test(parsed.pathname) || type.includes("video/mp4");
-        if (!looksLikeMp4) throw new Error("This address does not point directly to an MP4 video.");
+    function useYouTubeTranscript() {
+      const pasted = el.youtubeTranscript.value.trim();
+      if (!pasted) return fail("Paste the video's transcript first.");
+      if (pasted.length > MAX_TRANSCRIPT_CHARS) return fail("This transcript is over 250,000 characters. Split it into two parts.");
+      const clean = stripTimestamps(pasted);
+      if (words(clean).length < 18) return fail("The transcript is too short to summarize.");
 
-        const blob = await response.blob();
-        if (blob.size > MAX_SIZE) throw new Error("The linked file is over 100 MB.");
-        const remoteName = decodeURIComponent(parsed.pathname.split("/").pop() || "linked-video.mp4");
-        const safeName = /\.mp4$/i.test(remoteName) ? remoteName : "linked-video.mp4";
-        await chooseFile(new File([blob], safeName, {type:"video/mp4"}), true);
-      } catch (error) {
-        const message = error instanceof TypeError
-          ? "The host blocked browser access or the connection failed. Download the MP4 and upload it instead."
-          : error.message;
-        fail(message || "The linked video could not be loaded.");
-      } finally {
-        el.loadUrl.disabled = false;
-      }
+      rawText = clean;
+      transcriptViews = {clean:cleanTranscript(rawText), timed:pasted};
+      transcriptMode = "timed";
+      setTranscriptMode("clean",false);
+      clearKeyPoints();
+      updateMeta();
+      el.results.classList.add("show");
+      hideStatus();
+      toast("Transcript ready. Generate the essential points when you are ready.");
+      el.results.scrollIntoView({behavior:"smooth",block:"start"});
     }
 
     async function transcribe() {
@@ -920,16 +957,16 @@
     function words(text){return text.toLowerCase().replace(/[^a-z0-9'.-]/g," ").split(/\s+/).map(word=>word.replace(/^[.'-]+|[.'-]+$/g,"")).filter(Boolean)}
     function similarity(a,b){const A=new Set(words(a)),B=new Set(words(b)),common=[...A].filter(w=>B.has(w)).length,union=new Set([...A,...B]).size;return union?common/union:0}
     function formatPoints(){return keyPoints.map((p,i)=>`${i+1}. ${p}`).join("\n\n")}
-    function updateMeta(){el.meta.textContent=`${words(rawText).length.toLocaleString()} words · ${clock(duration)} · English`}
+    function updateMeta(){el.meta.textContent=`${words(rawText).length.toLocaleString()} words · ${sourceLabel}`}
     function mediaDuration(f){return new Promise((resolve,reject)=>{const m=document.createElement("video"),url=URL.createObjectURL(f);m.preload="metadata";m.onloadedmetadata=()=>{URL.revokeObjectURL(url);resolve(m.duration)};m.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("This MP4 cannot be decoded by your browser. Export it as MP4 with H.264 video and AAC audio."))};m.src=url})}
     function setStatus(message,percent=null,indeterminate=false){el.status.classList.add("show");el.statusText.textContent=message;el.percent.textContent=typeof percent==="number"?`${percent}%`:"";el.bar.classList.toggle("busy",indeterminate);el.bar.style.width=indeterminate?"38%":`${percent||0}%`}
     function hideStatus(){el.status.classList.remove("show");el.bar.classList.remove("busy");el.bar.style.width="0";el.percent.textContent=""}
     function fail(message){setStatus(`Error: ${message}`,0,false)}
     function friendlyError(error){const m=error?.message||"Something went wrong.";if(/^MEDIA_DECODE:/i.test(m))return"This MP4 cannot be decoded. Export it as MP4 with H.264 video and AAC audio, then try again.";if(/memory|allocation|out of bounds/i.test(m))return"This device ran out of memory. Try a shorter video.";if(/fetch|network|download|404/i.test(m))return"The Whisper model could not download. Check your internet and refresh the page.";if(/worker|module script/i.test(m))return"The browser could not start the private AI worker. Refresh the page and try again.";return`Local AI error: ${m}`}
-    function busy(value){el.transcribe.disabled=value||!file;el.input.disabled=value;el.url.disabled=value;el.loadUrl.disabled=value;el.remove.disabled=value}
+    function busy(value){el.transcribe.disabled=value||!file;el.input.disabled=value;el.url.disabled=value;el.loadUrl.disabled=value;el.youtubeTranscript.disabled=value;el.useTranscript.disabled=value;el.clearYoutube.disabled=value;el.remove.disabled=value}
     function clearKeyPoints(){keyPoints=[];el.points.replaceChildren();el.pointsEmpty.hidden=false;el.copyPoints.disabled=true}
     function clearResults(){rawText="";el.transcript.value="";el.results.classList.remove("show");clearKeyPoints()}
-    function reset(scroll=true,keepUrl=false){file=null;duration=0;transcriptViews={clean:"",timed:""};transcriptMode="clean";el.input.value="";if(!keepUrl)el.url.value="";el.file.classList.remove("show");el.transcribe.disabled=true;clearResults();hideStatus();if(scroll)el.drop.scrollIntoView({behavior:"smooth",block:"center"})}
+    function reset(scroll=true){file=null;duration=0;youtubeId="";sourceLabel="English";transcriptViews={clean:"",timed:""};transcriptMode="clean";el.input.value="";el.url.value="";el.youtubeTranscript.value="";el.youtubeFrame.src="";el.youtubeWorkspace.classList.remove("show");el.file.classList.remove("show");el.transcribe.disabled=true;clearResults();hideStatus();if(scroll)el.url.scrollIntoView({behavior:"smooth",block:"center"})}
     function clock(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0));return`${String(Math.floor(n/60)).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`}
     function formatBytes(bytes){return bytes<1048576?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/1048576).toFixed(1)} MB`}
     async function copy(text,message){if(!text.trim())return;try{await navigator.clipboard.writeText(text)}catch{const t=document.createElement("textarea");t.value=text;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove()}toast(message)}
