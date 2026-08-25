@@ -38,6 +38,8 @@
     .drop span{display:block;margin-top:7px;color:var(--muted);font-size:13px}
     .upload-icon{display:grid;width:56px;height:56px;margin:0 auto 14px;place-items:center;border-radius:17px;background:var(--dark);color:#fff;font-size:25px}
     #fileInput{position:absolute;width:1px;height:1px;opacity:0}
+    .input-divider{display:flex;align-items:center;gap:12px;margin:22px 0;color:var(--muted);font-size:12px;font-weight:850;text-transform:uppercase;letter-spacing:.08em}.input-divider:before,.input-divider:after{height:1px;flex:1;background:var(--line);content:""}
+    .url-box{border:1px solid var(--line);border-radius:18px;background:#fafaf5;padding:16px}.url-box label{display:block;margin-bottom:9px;font-size:13px;font-weight:900}.url-row{display:flex;gap:9px}.url-row input{min-width:0;min-height:46px;flex:1;border:1px solid #cbd0c7;border-radius:12px;background:#fff;padding:10px 13px;color:var(--ink)}.url-note{margin:9px 0 0;color:var(--muted);font-size:12px}
     .file{display:none;align-items:center;gap:12px;margin-top:14px;border:1px solid var(--line);border-radius:15px;background:#fafaf5;padding:13px 15px}
     .file.show{display:flex}.file-main{min-width:0;flex:1}.file-name{overflow:hidden;font-weight:850;text-overflow:ellipsis;white-space:nowrap}.file-meta{color:var(--muted);font-size:12px}
     .row{display:flex;flex-wrap:wrap;gap:11px;margin-top:20px}
@@ -57,30 +59,40 @@
     .empty{border:1px dashed #c5cac0;border-radius:14px;padding:18px;color:var(--muted);text-align:center;font-size:13px}
     footer{display:flex;justify-content:space-between;gap:15px;border-top:1px solid rgba(16,32,25,.12);padding:22px 0 34px;color:var(--muted);font-size:12px}
     .toast{position:fixed;right:16px;bottom:16px;max-width:calc(100% - 32px);border-radius:12px;background:var(--dark);padding:11px 14px;color:#fff;font-size:13px;font-weight:800;opacity:0;pointer-events:none;transform:translateY(10px);transition:.18s}.toast.show{opacity:1;transform:none}
-    @media(max-width:720px){.hero{grid-template-columns:1fr;gap:20px;padding-top:32px}.section-head{display:block}.tools{margin-top:10px}.panel{padding:22px 17px}footer{flex-direction:column}.hero p:last-child{font-size:16px}}
+    @media(max-width:720px){.hero{grid-template-columns:1fr;gap:20px;padding-top:32px}.section-head{display:block}.tools{margin-top:10px}.panel{padding:22px 17px}footer{flex-direction:column}.hero p:last-child{font-size:16px}.url-row{flex-direction:column}.url-row button{width:100%}}
   </style>
 </head>
 <body>
   <header class="shell">
     <div class="brand"><span class="logo">VB</span>VideoBrief AI</div>
-    <div class="version">Beta v6 · English</div>
+    <div class="version">Beta v7 · English</div>
   </header>
 
   <main class="shell">
     <section class="hero">
       <div><p class="eyebrow">Private browser AI</p><h1>Turn long videos into <span>key points.</span></h1></div>
-      <p>Upload an English MP4 and get a clean transcript plus the essential points—without watching the entire video.</p>
+      <p>Upload an English MP4—or paste a direct MP4 link—and get a clean transcript plus the essential points without watching the entire video.</p>
     </section>
 
     <section class="app">
       <div class="panel">
         <h2>Add your video</h2>
-        <p class="hint">English MP4 video · maximum 10 minutes and 100 MB.</p>
+        <p class="hint">English MP4 video · upload or direct link · maximum 10 minutes and 100 MB.</p>
 
         <label class="drop" id="dropZone" for="fileInput">
           <div><div class="upload-icon">↑</div><strong>Choose an MP4 video or drop it here</strong><span>MP4 only · H.264 video with AAC audio recommended</span></div>
         </label>
         <input id="fileInput" type="file" accept=".mp4,video/mp4">
+
+        <div class="input-divider"><span>or paste a link</span></div>
+        <div class="url-box">
+          <label for="videoUrl">Direct MP4 video URL</label>
+          <div class="url-row">
+            <input id="videoUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/video.mp4" aria-describedby="urlHelp">
+            <button class="dark" id="loadUrlBtn" type="button">Use this link</button>
+          </div>
+          <p class="url-note" id="urlHelp">Works when the address points directly to a public MP4 and the host allows browser access. YouTube, Instagram, TikTok and other webpage links are not supported in this private beta.</p>
+        </div>
 
         <div class="file" id="fileCard">
           <div>🎬</div><div class="file-main"><div class="file-name" id="fileName"></div><div class="file-meta" id="fileMeta"></div></div>
@@ -93,7 +105,7 @@
           <div class="status-top"><span id="statusText"></span><span class="percent" id="statusPercent"></span></div>
           <div class="track"><div class="bar" id="bar"></div></div>
         </div>
-        <p class="privacy">🔒 Your media stays in this browser. No account, API key, or server upload.</p>
+        <p class="privacy">🔒 Your media stays in this browser. A linked MP4 is fetched directly to your device; it is not uploaded to a VideoBrief server.</p>
       </div>
 
       <div class="panel" id="results">
@@ -125,7 +137,7 @@
     const MAX_DURATION = 10 * 60;
     const $ = id => document.getElementById(id);
     const el = {
-      input:$("fileInput"), drop:$("dropZone"), file:$("fileCard"), fileName:$("fileName"), fileMeta:$("fileMeta"),
+      input:$("fileInput"), drop:$("dropZone"), url:$("videoUrl"), loadUrl:$("loadUrlBtn"), file:$("fileCard"), fileName:$("fileName"), fileMeta:$("fileMeta"),
       remove:$("removeBtn"), transcribe:$("transcribeBtn"), status:$("status"), statusText:$("statusText"),
       percent:$("statusPercent"), bar:$("bar"), results:$("results"), transcript:$("transcript"),
       title:$("transcriptTitle"), cleanView:$("cleanView"), timedView:$("timedView"),
@@ -139,6 +151,8 @@
     let transcriptMode = "clean", transcriptViews = {clean:"",timed:""};
 
     el.input.addEventListener("change", () => chooseFile(el.input.files[0]));
+    el.loadUrl.addEventListener("click", loadVideoUrl);
+    el.url.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); loadVideoUrl(); } });
     el.remove.addEventListener("click", reset);
     el.transcribe.addEventListener("click", transcribe);
     el.pointsButton.addEventListener("click", createKeyPoints);
@@ -153,8 +167,8 @@
     ["dragleave","drop"].forEach(name => el.drop.addEventListener(name, event => { event.preventDefault(); el.drop.classList.remove("drag"); }));
     el.drop.addEventListener("drop", event => chooseFile(event.dataTransfer.files[0]));
 
-    async function chooseFile(selected) {
-      reset(false);
+    async function chooseFile(selected, keepUrl=false) {
+      reset(false, keepUrl);
       if (!selected) return;
       if (!/\.mp4$/i.test(selected.name)) return fail("Only MP4 video files are supported in this beta.");
       if (selected.size > MAX_SIZE) return fail("The file is over 100 MB.");
@@ -168,6 +182,47 @@
         el.fileMeta.textContent = `${formatBytes(selected.size)} · ${clock(duration)}`;
         el.file.classList.add("show"); el.transcribe.disabled = false; hideStatus();
       } catch (error) { fail(error.message); }
+    }
+
+    async function loadVideoUrl() {
+      const value = el.url.value.trim();
+      if (!value) return fail("Paste a direct MP4 link first.");
+
+      let parsed;
+      try { parsed = new URL(value); }
+      catch { return fail("Enter a complete URL beginning with https://"); }
+
+      if (parsed.protocol !== "https:") return fail("For privacy and security, the video link must use https://");
+      if (/(^|\.)(youtube\.com|youtu\.be|instagram\.com|tiktok\.com|vimeo\.com)$/i.test(parsed.hostname)) {
+        return fail("This is a webpage link, not a direct MP4. Download your own video, then upload the MP4 file instead.");
+      }
+
+      el.loadUrl.disabled = true;
+      setStatus("Loading the linked video into your browser…", null, true);
+      try {
+        const response = await fetch(parsed.href, {mode:"cors", credentials:"omit"});
+        if (!response.ok) throw new Error(`The video host returned ${response.status}.`);
+
+        const announcedSize = Number(response.headers.get("content-length")) || 0;
+        if (announcedSize > MAX_SIZE) throw new Error("The linked file is over 100 MB.");
+
+        const type = (response.headers.get("content-type") || "").toLowerCase();
+        const looksLikeMp4 = /\.mp4$/i.test(parsed.pathname) || type.includes("video/mp4");
+        if (!looksLikeMp4) throw new Error("This address does not point directly to an MP4 video.");
+
+        const blob = await response.blob();
+        if (blob.size > MAX_SIZE) throw new Error("The linked file is over 100 MB.");
+        const remoteName = decodeURIComponent(parsed.pathname.split("/").pop() || "linked-video.mp4");
+        const safeName = /\.mp4$/i.test(remoteName) ? remoteName : "linked-video.mp4";
+        await chooseFile(new File([blob], safeName, {type:"video/mp4"}), true);
+      } catch (error) {
+        const message = error instanceof TypeError
+          ? "The host blocked browser access or the connection failed. Download the MP4 and upload it instead."
+          : error.message;
+        fail(message || "The linked video could not be loaded.");
+      } finally {
+        el.loadUrl.disabled = false;
+      }
     }
 
     async function transcribe() {
@@ -871,10 +926,10 @@
     function hideStatus(){el.status.classList.remove("show");el.bar.classList.remove("busy");el.bar.style.width="0";el.percent.textContent=""}
     function fail(message){setStatus(`Error: ${message}`,0,false)}
     function friendlyError(error){const m=error?.message||"Something went wrong.";if(/^MEDIA_DECODE:/i.test(m))return"This MP4 cannot be decoded. Export it as MP4 with H.264 video and AAC audio, then try again.";if(/memory|allocation|out of bounds/i.test(m))return"This device ran out of memory. Try a shorter video.";if(/fetch|network|download|404/i.test(m))return"The Whisper model could not download. Check your internet and refresh the page.";if(/worker|module script/i.test(m))return"The browser could not start the private AI worker. Refresh the page and try again.";return`Local AI error: ${m}`}
-    function busy(value){el.transcribe.disabled=value||!file;el.input.disabled=value;el.remove.disabled=value}
+    function busy(value){el.transcribe.disabled=value||!file;el.input.disabled=value;el.url.disabled=value;el.loadUrl.disabled=value;el.remove.disabled=value}
     function clearKeyPoints(){keyPoints=[];el.points.replaceChildren();el.pointsEmpty.hidden=false;el.copyPoints.disabled=true}
     function clearResults(){rawText="";el.transcript.value="";el.results.classList.remove("show");clearKeyPoints()}
-    function reset(scroll=true){file=null;duration=0;transcriptViews={clean:"",timed:""};transcriptMode="clean";el.input.value="";el.file.classList.remove("show");el.transcribe.disabled=true;clearResults();hideStatus();if(scroll)el.drop.scrollIntoView({behavior:"smooth",block:"center"})}
+    function reset(scroll=true,keepUrl=false){file=null;duration=0;transcriptViews={clean:"",timed:""};transcriptMode="clean";el.input.value="";if(!keepUrl)el.url.value="";el.file.classList.remove("show");el.transcribe.disabled=true;clearResults();hideStatus();if(scroll)el.drop.scrollIntoView({behavior:"smooth",block:"center"})}
     function clock(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0));return`${String(Math.floor(n/60)).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`}
     function formatBytes(bytes){return bytes<1048576?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/1048576).toFixed(1)} MB`}
     async function copy(text,message){if(!text.trim())return;try{await navigator.clipboard.writeText(text)}catch{const t=document.createElement("textarea");t.value=text;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove()}toast(message)}
