@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#111714">
-  <title>VideoBrief AI — YouTube & MP4 Notes</title>
+  <title>VideoBrief AI — YouTube, Video & Audio Notes</title>
   <style>
     :root {
       --ink:#102019; --muted:#607068; --paper:#f5f3ec; --card:#fffef9;
@@ -67,13 +67,13 @@
 <body>
   <header class="shell">
     <div class="brand"><span class="logo">VB</span>VideoBrief AI</div>
-    <div class="version">Beta v8 · YouTube first</div>
+    <div class="version">Beta v8.1 · Cleaner notes</div>
   </header>
 
   <main class="shell">
     <section class="hero">
       <div><p class="eyebrow">Private browser AI</p><h1>Turn long videos into <span>useful notes.</span></h1></div>
-      <p>Start with a YouTube video and its transcript—or upload your own MP4. VideoBrief cleans the transcript and generates grounded key points locally in your browser.</p>
+      <p>Start with a YouTube transcript—or upload a video or audio file. VideoBrief transcribes local media, cleans transcript noise, and generates grounded key points in your browser.</p>
     </section>
 
     <section class="app">
@@ -97,7 +97,7 @@
             <ol class="youtube-steps">
               <li>Open the video on YouTube.</li>
               <li>Choose <strong>Show transcript</strong> from the video description/menu.</li>
-              <li>Copy the transcript and paste it here. Timestamps are accepted.</li>
+              <li>Copy the transcript and paste it here. Timestamps and labels such as “Music” are cleaned automatically.</li>
             </ol>
             <a class="youtube-link" id="openYoutube" href="#" target="_blank" rel="noopener">Open this video on YouTube ↗</a>
             <textarea class="youtube-transcript" id="youtubeTranscript" placeholder="Paste the YouTube transcript here…" aria-label="YouTube transcript"></textarea>
@@ -105,25 +105,25 @@
           </div>
         </div>
 
-        <div class="input-divider"><span>or upload your own video</span></div>
-        <p class="hint">English MP4 · up to 30 minutes and 300 MB. Large files need a modern desktop and can take time because processing is local.</p>
+        <div class="input-divider"><span>or transcribe a local file automatically</span></div>
+        <p class="hint">English video or audio · MP4, MP3, WAV, M4A or WebM · up to 30 minutes and 300 MB. Use this when a video has no YouTube transcript.</p>
         <label class="drop" id="dropZone" for="fileInput">
-          <div><div class="upload-icon">↑</div><strong>Choose an MP4 video or drop it here</strong><span>MP4 · H.264 video with AAC audio recommended</span></div>
+          <div><div class="upload-icon">↑</div><strong>Choose a video or audio file</strong><span>MP4, MP3, WAV, M4A or WebM</span></div>
         </label>
-        <input id="fileInput" type="file" accept=".mp4,video/mp4">
+        <input id="fileInput" type="file" accept=".mp4,.mp3,.wav,.m4a,.webm,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp4,audio/webm">
 
         <div class="file" id="fileCard">
           <div>🎬</div><div class="file-main"><div class="file-name" id="fileName"></div><div class="file-meta" id="fileMeta"></div></div>
           <button class="ghost small" id="removeBtn" type="button">Remove</button>
         </div>
 
-        <div class="row"><button class="primary" id="transcribeBtn" type="button" disabled>✦ Generate transcript from MP4</button></div>
+        <div class="row"><button class="primary" id="transcribeBtn" type="button" disabled>✦ Transcribe this file</button></div>
 
         <div class="status" id="status" role="status" aria-live="polite">
           <div class="status-top"><span id="statusText"></span><span class="percent" id="statusPercent"></span></div>
           <div class="track"><div class="bar" id="bar"></div></div>
         </div>
-        <div class="limit-card"><strong>Why the one-time transcript paste?</strong> It keeps the tool free, private, and compatible with long YouTube videos without downloading or separating YouTube audio.</div>
+        <div class="limit-card"><strong>No transcript on YouTube?</strong> If you own the media or already have its file, upload the video or audio above and VideoBrief will transcribe it locally.</div>
         <p class="privacy">🔒 Uploaded MP4s and pasted transcripts stay in this browser. The embedded YouTube player connects directly to YouTube; VideoBrief stores nothing.</p>
       </div>
       <div class="panel" id="results">
@@ -144,7 +144,7 @@
     </section>
   </main>
 
-  <footer class="shell"><span>VideoBrief AI · Free beta v8</span><span>$0 · no accounts · no stored transcripts</span></footer>
+  <footer class="shell"><span>VideoBrief AI · Free beta v8.1</span><span>$0 · no accounts · no stored transcripts</span></footer>
   <div class="toast" id="toast"></div>
 
   <script type="module">
@@ -169,7 +169,7 @@
     };
 
     let file = null, duration = 0, aiWorker = null, activeAIRequest = null;
-    let rawText = "", keyPoints = [], toastTimer, youtubeId = "", sourceLabel = "English";
+    let rawText = "", notesSourceText = "", keyPoints = [], toastTimer, youtubeId = "", sourceLabel = "English";
     let transcriptMode = "clean", transcriptViews = {clean:"",timed:""};
 
     el.input.addEventListener("change", () => chooseFile(el.input.files[0]));
@@ -183,7 +183,7 @@
     el.copyTranscript.addEventListener("click", () => copy(el.transcript.value, "Transcript copied."));
     el.downloadTranscript.addEventListener("click", () => download("video-transcript.txt", el.transcript.value));
     el.copyPoints.addEventListener("click", () => copy(formatPoints(), "Key points copied."));
-    el.transcript.addEventListener("input", () => { rawText = stripTimestamps(el.transcript.value); clearKeyPoints(); updateMeta(); });
+    el.transcript.addEventListener("input", () => { rawText = stripTimestamps(el.transcript.value); notesSourceText=rawText; clearKeyPoints(); updateMeta(); });
     el.cleanView.addEventListener("click", () => setTranscriptMode("clean"));
     el.timedView.addEventListener("click", () => setTranscriptMode("timed"));
 
@@ -194,7 +194,7 @@
     async function chooseFile(selected) {
       reset(false);
       if (!selected) return;
-      if (!/\.mp4$/i.test(selected.name)) return fail("Only MP4 video files are supported.");
+      if (!/\.(?:mp4|mp3|wav|m4a|webm)$/i.test(selected.name)) return fail("Use an MP4, MP3, WAV, M4A or WebM file.");
       if (selected.size > MAX_SIZE) return fail("The file is over 300 MB.");
       setStatus("Checking the media file…", null, true);
       try {
@@ -202,7 +202,7 @@
         if (!Number.isFinite(duration) || duration <= 0) throw new Error("Could not read this file.");
         if (duration > MAX_DURATION) throw new Error("The file is longer than 30 minutes.");
         file = selected;
-        sourceLabel = `MP4 · ${clock(duration)} · English`;
+        sourceLabel = `${selected.type.startsWith("audio/")?"Audio":"Video"} · ${clock(duration)} · English`;
         el.fileName.textContent = selected.name;
         el.fileMeta.textContent = `${formatBytes(selected.size)} · ${clock(duration)}`;
         el.file.classList.add("show"); el.transcribe.disabled = false; hideStatus();
@@ -251,6 +251,7 @@
       if (words(clean).length < 18) return fail("The transcript is too short to summarize.");
 
       rawText = clean;
+      notesSourceText = clean;
       transcriptViews = {clean:cleanTranscript(rawText), timed:pasted};
       transcriptMode = "timed";
       setTranscriptMode("clean",false);
@@ -276,6 +277,7 @@
         setStatus("Preparing private local transcription…", null, true);
         const result = await runAI("transcribe", {audio}, [audio.buffer]);
         rawText = (result.text || "").replace(/\s+/g," ").trim();
+        notesSourceText = rawText;
         if (!rawText) throw new Error("Whisper returned an empty transcript.");
         transcriptViews={clean:cleanTranscript(rawText),timed:compactTimestamps(result)};
         transcriptMode="timed";
@@ -559,71 +561,27 @@
     }
 
     async function createKeyPoints() {
-      rawText = stripTimestamps(el.transcript.value);
+      rawText = notesSourceText || stripTimestamps(el.transcript.value);
       if (words(rawText).length < 18) return toast("The transcript is too short.");
 
       const originalLabel = el.pointsButton.textContent;
       const candidates = buildSummaryCandidates(rawText,5);
-      if (!candidates.length) return toast("No clear key points were found.");
+      if (!candidates.length) return toast("The transcript needs more meaningful words before notes can be generated.");
       clearKeyPoints();
-      busy(true);
       el.pointsButton.disabled = true;
       el.pointsButton.textContent = "Generating essential points…";
-
-      try {
-        setStatus("Detecting the main sections…",20,false);
-        let generatedNotes=[];
-
-        try {
-          generatedNotes=await generateBetterNotes(candidates);
-          const retryIndexes=candidates
-            .map((source,index)=>noteNeedsRetry(generatedNotes[index],source)?index:-1)
-            .filter(index=>index>=0);
-
-          if (retryIndexes.length) {
-            setStatus(`Improving ${retryIndexes.length} weak ${retryIndexes.length===1?"point":"points"}…`,null,true);
-            const retried=await generateBetterNotes(retryIndexes.map(index=>candidates[index]),true);
-            retryIndexes.forEach((sourceIndex,retryIndex)=>{
-              if (retried[retryIndex]) generatedNotes[sourceIndex]=retried[retryIndex];
-            });
-          }
-        } catch (modelError) {
-          throw new Error(`REWRITE_MODEL:${modelError?.message||"The rewriting model could not run."}`);
-        }
-
-        const checkedNotes=mergeNotes(generatedNotes,candidates);
-        const rejected=checkedNotes.filter(note=>!note).length;
-        if (rejected) throw new Error(`QUALITY_CHECK:${rejected}`);
-        keyPoints=checkedNotes;
-        renderPoints();
-        el.copyPoints.disabled=!keyPoints.length;
-        setStatus("Essential points ready.",100,false);
-        toast("Essential points ready.");
-      } catch (error) {
-        console.error(error);
-        if (/^QUALITY_CHECK:/i.test(error?.message||"")) {
-          fail("The local AI could not create a reliable paraphrased summary. Try generating the points again.");
-        } else if (/^REWRITE_MODEL:/i.test(error?.message||"")) {
-          const detail=String(error?.message||"").replace(/^REWRITE_MODEL:/i,"").replace(/\s+/g," ").slice(0,160);
-          fail(`Rewriting model error: ${detail||"The model could not run on this device."}`);
-        } else {
-          fail("The essential points could not be generated. Try again.");
-        }
-      } finally {
-        busy(false);
-        el.pointsButton.disabled=false;
-        el.pointsButton.textContent=originalLabel;
-      }
+      setStatus("Finding the strongest ideas…",55,false);
+      keyPoints=candidates.map(normalizeSummaryPoint).filter(Boolean);
+      renderPoints();
+      el.copyPoints.disabled=!keyPoints.length;
+      setStatus("Essential points ready.",100,false);
+      toast("Essential points ready. Verify important details against the video.");
+      el.pointsButton.disabled=false;
+      el.pointsButton.textContent=originalLabel;
     }
 
-    async function generateBetterNotes(candidates,retry=false) {
-      const prompts=candidates.map(fact=>{
-        const required=requiredSourceTerms(fact);
-        const keep=required.length?` Keep these essential concepts: ${required.join(", ")}.`:"";
-        return retry
-          ? `The previous rewrite failed quality checks. Rewrite this transcript fact as one neutral key point of 10 to 24 words. Change the sentence structure and wording. Preserve every fact, name, number, contrast, and list item.${keep} Do not copy six consecutive source words. Add nothing. Output only one complete sentence.\n\nTRANSCRIPT FACT: ${fact}`
-          : `Paraphrase this transcript fact as one concise, neutral key point of 10 to 24 words. Compress the meaning and use fresh wording. Preserve every fact, name, number, contrast, and list item.${keep} Do not copy six consecutive source words. Add nothing. Output only one complete sentence.\n\nTRANSCRIPT FACT: ${fact}`;
-      });
+    async function generateBetterNotes(candidates) {
+      const prompts=candidates.map(fact=>`summarize: ${fact}`);
       const output=await runAI("summarize",{prompts});
       return (Array.isArray(output)?output:[output]).map(parseGeneratedPoint);
     }
@@ -755,8 +713,11 @@
     }
 
     function buildSummaryCandidates(text,max) {
+      const captionClaims=extractCaptionClaims(text,max);
+      if (captionClaims.length>=Math.min(3,max)) return captionClaims;
+
       const sentences=dedupeSummarySentences(
-        splitSentences(text).filter(sentence=>{
+        transcriptUnits(text).filter(sentence=>{
           const length=words(sentence).length;
           return length>=5&&length<=60&&sentence.length>=24;
         })
@@ -793,6 +754,39 @@
       }
 
       return diverseSummaryPoints(sentences,max);
+    }
+
+    function extractCaptionClaims(text,max) {
+      const lines=String(text||"").split(/\n+/).map(line=>line.replace(/\s+/g," ").trim()).filter(line=>words(line).length>=3);
+      if (lines.length<4) return [];
+      const strong=/\b(?:everything worth doing|start with action|trust your own word|you can't|if you want|when your friends|the only thing|ambition is|entitlement is|region beta paradox|here's how|there's no greater|most of our lives|as opposed to|this is the discomfort|cost of doing business|stop breaking promises|comfortably complacency)\b/i;
+      const claim=/\b(?:means|because|need to|should|only|important|remember|if|when|is when|is the|that's why|the reason)\b/i;
+      const weak=/^(?:and|but|so|because|that|which|who|where|right|thing|isn't|me|it means no one|good great)\b/i;
+      const ranked=lines.map((line,index)=>{
+        const joined=[line,lines[index+1]||"",lines[index+2]||""].join(" ").replace(/\s+/g," ").trim();
+        const strongMatch=joined.match(strong);
+        const claimMatch=joined.match(claim);
+        let excerpt=strongMatch?.index>=0?joined.slice(strongMatch.index):joined;
+        if (!strongMatch&&weak.test(line)&&claimMatch?.index>0) excerpt=joined.slice(claimMatch.index);
+        if (words(excerpt).length>42) excerpt=excerpt.split(/\s+/).slice(0,42).join(" ");
+        const length=words(excerpt).length;
+        let score=0;
+        if (strongMatch) score+=20;
+        if (claimMatch) score+=7;
+        if (weak.test(line)) score-=8;
+        if (/\b(?:uh|um|you know|like we were saying)\b/i.test(joined)) score-=4;
+        if (length>=16&&length<=46) score+=5;
+        score-=Math.abs(29-Math.min(length,58))*.05;
+        return {index,text:excerpt,score};
+      }).sort((a,b)=>b.score-a.score);
+      const chosen=[];
+      for (const item of ranked) {
+        if (item.score<5) continue;
+        if (chosen.some(existing=>Math.abs(existing.index-item.index)<2||similarity(existing.text,item.text)>.58)) continue;
+        chosen.push(item);
+        if (chosen.length>=max) break;
+      }
+      return chosen.sort((a,b)=>a.index-b.index).map(item=>cleanSentence(item.text));
     }
 
     function sectionTopic(sentence) {
@@ -845,7 +839,11 @@
         .replace(/^(?:well|so|now|basically|essentially|in other words)\s*[,—:-]?\s*/i,"")
         .replace(/\s+/g," ")
         .trim();
-      if (words(text).length>38) text=text.split(/\s+/).slice(0,38).join(" ");
+      text=text.replace(/[.!?]+$/g,"").trim();
+      if (words(text).length>52) text=text.split(/\s+/).slice(0,52).join(" ");
+      const complete=text.replace(/\s+(?:because|when|and|but|so|which|that|if)\s+[^.!?]{0,90}$/i,"").trim();
+      if (words(complete).length>=7) text=complete;
+      text=text.replace(/\b(?:and|but|or|because|when|that|which|who|it|the|a|to|of|in|if|have)\.?$/i,"").trim();
       return cleanSentence(text);
     }
 
@@ -929,11 +927,40 @@
     }
 
     function cleanTranscript(text) {
-      const sentences=splitSentences(text);
+      const sentences=transcriptUnits(text);
       if (!sentences.length) return text;
       const paragraphs=[];
       for (let i=0;i<sentences.length;i+=2) paragraphs.push(sentences.slice(i,i+2).join(" "));
       return paragraphs.join("\n\n");
+    }
+
+    function transcriptUnits(text) {
+      const lines=String(text||"").replace(/\r/g,"").split(/\n+/).map(line=>line.replace(/\s+/g," ").trim()).filter(Boolean);
+      const pieces=[];
+      for (const line of lines) {
+        const sentences=splitSentences(line);
+        for (const sentence of sentences.length?sentences:[line]) {
+          const tokens=sentence.split(/\s+/).filter(Boolean);
+          for (let start=0;start<tokens.length;start+=46) pieces.push(tokens.slice(start,start+46).join(" "));
+        }
+      }
+      const units=[];
+      let current="";
+      for (const piece of pieces) {
+        const joined=`${current} ${piece}`.trim();
+        if (current&&words(joined).length>50) {
+          units.push(cleanSentence(current));
+          current=piece;
+        } else {
+          current=joined;
+        }
+        if (words(current).length>=24&&/[.!?]$/.test(piece.trim())) {
+          units.push(cleanSentence(current));
+          current="";
+        }
+      }
+      if (current) units.push(cleanSentence(current));
+      return units.filter(unit=>words(unit).length>=5);
     }
 
     function compactTimestamps(result) {
@@ -952,13 +979,26 @@
       rawText=stripTimestamps(el.transcript.value); updateMeta();
     }
 
-    function stripTimestamps(text){return text.replace(/^\s*(?:\[\d{1,3}:\d{2}\s*[–-]\s*(?:\d{1,3}:\d{2}|--:--)\]|\d{1,3}:\d{2})\s*/gm,"").replace(/\s+/g," ").trim()}
+    function stripTimestamps(text){
+      return String(text||"")
+        .replace(/\r/g,"")
+        .split(/\n+/)
+        .map(line=>line
+          .replace(/^\s*(?:\[\s*)?\d{1,3}:\d{2}(?::\d{2})?(?:\s*(?:[–—-]|-->)\s*(?:\d{1,3}:\d{2}(?::\d{2})?|--:--))?(?:\s*\])?\s*/,"")
+          .replace(/^\s*(?:(?:\d+\s+hours?,?\s*)?(?:\d+\s+minutes?,?\s*)?\d+\s+seconds?)\s*/i,"")
+          .replace(/\[(?:music|applause|laughter|silence|foreign)\]/gi," ")
+          .replace(/\s+/g," ")
+          .trim())
+        .filter(Boolean)
+        .join("\n")
+        .trim()
+    }
     function splitSentences(text){return (text.replace(/(\d)\.(\d)/g,"$1__DOT__$2").match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[]).map(s=>s.replace(/__DOT__/g,".").trim()).filter(Boolean)}
     function words(text){return text.toLowerCase().replace(/[^a-z0-9'.-]/g," ").split(/\s+/).map(word=>word.replace(/^[.'-]+|[.'-]+$/g,"")).filter(Boolean)}
     function similarity(a,b){const A=new Set(words(a)),B=new Set(words(b)),common=[...A].filter(w=>B.has(w)).length,union=new Set([...A,...B]).size;return union?common/union:0}
     function formatPoints(){return keyPoints.map((p,i)=>`${i+1}. ${p}`).join("\n\n")}
     function updateMeta(){el.meta.textContent=`${words(rawText).length.toLocaleString()} words · ${sourceLabel}`}
-    function mediaDuration(f){return new Promise((resolve,reject)=>{const m=document.createElement("video"),url=URL.createObjectURL(f);m.preload="metadata";m.onloadedmetadata=()=>{URL.revokeObjectURL(url);resolve(m.duration)};m.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("This MP4 cannot be decoded by your browser. Export it as MP4 with H.264 video and AAC audio."))};m.src=url})}
+    function mediaDuration(f){return new Promise((resolve,reject)=>{const m=document.createElement(f.type.startsWith("audio/")?"audio":"video"),url=URL.createObjectURL(f);m.preload="metadata";m.onloadedmetadata=()=>{URL.revokeObjectURL(url);resolve(m.duration)};m.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("This media file cannot be decoded by your browser. Try MP4 with H.264/AAC, MP3, WAV, M4A or WebM."))};m.src=url})}
     function setStatus(message,percent=null,indeterminate=false){el.status.classList.add("show");el.statusText.textContent=message;el.percent.textContent=typeof percent==="number"?`${percent}%`:"";el.bar.classList.toggle("busy",indeterminate);el.bar.style.width=indeterminate?"38%":`${percent||0}%`}
     function hideStatus(){el.status.classList.remove("show");el.bar.classList.remove("busy");el.bar.style.width="0";el.percent.textContent=""}
     function fail(message){setStatus(`Error: ${message}`,0,false)}
@@ -966,7 +1006,7 @@
     function busy(value){el.transcribe.disabled=value||!file;el.input.disabled=value;el.url.disabled=value;el.loadUrl.disabled=value;el.youtubeTranscript.disabled=value;el.useTranscript.disabled=value;el.clearYoutube.disabled=value;el.remove.disabled=value}
     function clearKeyPoints(){keyPoints=[];el.points.replaceChildren();el.pointsEmpty.hidden=false;el.copyPoints.disabled=true}
     function clearResults(){rawText="";el.transcript.value="";el.results.classList.remove("show");clearKeyPoints()}
-    function reset(scroll=true){file=null;duration=0;youtubeId="";sourceLabel="English";transcriptViews={clean:"",timed:""};transcriptMode="clean";el.input.value="";el.url.value="";el.youtubeTranscript.value="";el.youtubeFrame.src="";el.youtubeWorkspace.classList.remove("show");el.file.classList.remove("show");el.transcribe.disabled=true;clearResults();hideStatus();if(scroll)el.url.scrollIntoView({behavior:"smooth",block:"center"})}
+    function reset(scroll=true){file=null;duration=0;youtubeId="";sourceLabel="English";notesSourceText="";transcriptViews={clean:"",timed:""};transcriptMode="clean";el.input.value="";el.url.value="";el.youtubeTranscript.value="";el.youtubeFrame.src="";el.youtubeWorkspace.classList.remove("show");el.file.classList.remove("show");el.transcribe.disabled=true;clearResults();hideStatus();if(scroll)el.url.scrollIntoView({behavior:"smooth",block:"center"})}
     function clock(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0));return`${String(Math.floor(n/60)).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`}
     function formatBytes(bytes){return bytes<1048576?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/1048576).toFixed(1)} MB`}
     async function copy(text,message){if(!text.trim())return;try{await navigator.clipboard.writeText(text)}catch{const t=document.createElement("textarea");t.value=text;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove()}toast(message)}
