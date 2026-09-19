@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#111714">
-<meta name="description" content="Free study notes from English transcripts and your own recordings. Keep the source beside every key point. No account needed.">
-<title>VideoBrief AI — Make a lesson easier to revisit</title>
+<meta name="description" content="Free learning packs from English lessons: topic sections, flashcards, self-tests and a personal review list. No account needed.">
+<title>VideoBrief AI — Learn it. Recall it. Keep it.</title>
 <style>
     :root {
       --ink:#102019; --muted:#607068; --paper:#f5f3ec; --card:#fffef9;
@@ -71,47 +71,73 @@
 details{margin-top:10px}summary{cursor:pointer;font-size:13px;font-weight:800}blockquote{margin:8px 0;white-space:pre-wrap}.notice{border-radius:14px;padding:14px 16px;background:#eff4e7;color:#344b3b;font-size:14px}.error{background:#ffebe7!important;color:#722819!important}.status button{margin-top:12px}.about{padding:30px 0 50px;max-width:740px}.about p{color:var(--muted)}.sample-badge{color:var(--green);font-weight:800}.result-actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.points li:before{content:attr(data-n)}.points li{list-style:none}.review-note{color:var(--muted);font-size:13px}
 @media(max-width:480px){h1{font-size:44px}.hero h1 span{white-space:normal}.tabs button{flex:1;padding:10px 8px;font-size:13px}.row button{flex:1}.status-top{display:block}}
 </style>
+<style>
+.learn-path{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0}.learn-path span{padding:7px 12px;border-radius:999px;background:#edf4df;color:#294426;font-size:12px;font-weight:850}
+.points>li>details{margin:0}.points>li>details>summary{font-size:17px}.points p{line-height:1.75}.source-quote{max-height:320px;overflow:auto}.practice{margin-top:36px;border-top:1px solid var(--line);padding-top:30px;scroll-margin-top:20px}.practice-tabs{margin:18px 0}.practice-tabs button[aria-pressed=true]{background:var(--dark);color:white}
+.progress-box{background:#f0f4e9;padding:16px;border-radius:16px;margin-top:20px}.progress-box p{margin:0 0 8px;font-size:13px}progress{accent-color:var(--green);width:100%;height:10px}
+.practice-card{background:#f5f3ec;border:1px solid var(--line);border-radius:20px;padding:clamp(18px,4vw,30px)}.practice-card h3{margin:10px 0 14px}.practice-card .prompt{white-space:pre-wrap;font-size:17px;line-height:1.7;overflow-wrap:anywhere}.practice-card textarea{min-height:120px;background:white}.practice-card label{display:block;font-size:13px;font-weight:800;margin:16px 0 8px}.reference{background:white;border-left:4px solid var(--green);padding:16px;margin-top:18px;white-space:pre-wrap;max-height:360px;overflow:auto}.reference p{margin:8px 0}.card-nav{display:flex;justify-content:space-between;gap:12px;margin-top:20px}.review-plan{margin-top:26px;padding:20px;border-radius:18px;border:1px solid var(--line)}.review-plan li{margin:10px 0}.quality{font-size:13px;color:var(--muted);border-left:3px solid var(--orange);padding-left:12px}.point-text{overflow-wrap:anywhere}.points li{padding-left:48px}a:focus-visible,summary:focus-visible{outline:3px solid var(--orange);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+@media(max-width:480px){.practice-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}.practice-tabs button{padding:9px 5px;font-size:12px}.points li{padding-left:40px}.points li:before{left:8px}.practice-card .row button{flex-basis:100%}}
+</style>
 </head>
 <body>
-<header class="shell"><div class="brand"><span class="logo">VB</span>VideoBrief AI</div><span class="version">Free beta · v9</span></header>
+<header class="shell"><div class="brand"><span class="logo">VB</span>VideoBrief AI</div><span class="version">Learning beta · v10</span></header>
 <main class="shell">
-<section class="hero"><div><p class="eyebrow">Less replaying. More understanding.</p><h1>Keep the lesson.<br><span>Find the point.</span></h1></div><div><p>Turn an English transcript or your own recording into useful study highlights—with the original words beside every point.</p><div class="hero-actions"><button class="dark" id="sampleBtn">Try a sample lesson</button><p>No account. No payment.</p></div></div></section>
+<section class="hero"><div><p class="eyebrow">A lesson is only the beginning.</p><h1>Learn it.<br><span>Recall it.</span></h1><div class="learn-path"><span>01 Understand</span><span>02 Practise</span><span>03 Review</span></div></div><div><p>Build a learning pack from an English lesson. Read the key passages, test yourself, and revisit what needs practice.</p><div class="hero-actions"><button class="dark" id="sampleBtn">Try a sample lesson</button><p>Free. No account.</p></div></div></section>
 <section class="app">
 <div class="panel">
 <h2>What are you studying?</h2>
-<p class="hint">Choose a source. Your notes appear here, ready to copy or download.</p>
+<p class="hint">Start with your lesson. Leave with sections, flashcards, self-tests and a review list.</p>
 <div class="tabs" aria-label="Choose input method">
 <button class="tab" data-mode="youtube" aria-pressed="true">YouTube link</button><button class="tab" data-mode="text" aria-pressed="false">Paste transcript</button><button class="tab" data-mode="file" aria-pressed="false">Upload file</button>
 </div>
 <div id="youtubePanel">
-<div class="url-box"><label for="videoUrl">1. Paste your YouTube link</label><div class="url-row"><input id="videoUrl" type="text" inputmode="url" placeholder="youtube.com/watch?v=… or youtu.be/…" aria-describedby="urlHelp"><button class="dark" id="loadUrlBtn">Open video</button></div><p class="url-note" id="urlHelp">The link opens the video here. To make notes, paste its transcript below. Automatic captions from a link are not available in this version.</p></div>
+<div class="url-box"><label for="videoUrl">Your YouTube lesson</label><div class="url-row"><input id="videoUrl" type="text" inputmode="url" placeholder="youtube.com/watch?v=… or youtu.be/…" aria-describedby="urlHelp"><button class="dark" id="loadUrlBtn">Open lesson</button></div><p class="url-note" id="urlHelp">Attach the original video to your learning pack. On this public beta, you will also need its transcript; automatic caption import is not connected yet.</p></div>
 <div id="youtubeWorkspace" hidden><div class="youtube-frame"><iframe id="youtubeFrame" title="YouTube video preview" allow="encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><a id="openYoutube" class="youtube-link" target="_blank" rel="noopener">Open video on YouTube to copy its transcript ↗</a></div>
 <details><summary>Where do I find the transcript?</summary><p class="hint">Open the video on YouTube, expand the description and look for “Show transcript.” Copy the text and paste it below. The location can differ between devices. If there is no transcript, upload a recording you own using Upload file.</p></details>
 </div>
-<div class="source-area" id="textPanel">
-<label for="sourceText" id="sourceLabel">2. Paste the transcript</label><textarea id="sourceText" placeholder="Paste your English lesson or transcript. Timestamps are welcome." maxlength="250000" aria-describedby="textHelp"></textarea>
-<p id="textHelp" class="hint">Text stays in this tab. Notes select useful passages from your source; they do not add new facts.</p>
-<div class="row"><button class="primary" id="makeNotes">Make study notes</button><button class="ghost" id="clearBtn">Clear</button></div>
+<div class="source-area" id="textPanel" hidden>
+<label for="sourceText" id="sourceLabel">Add the transcript to learn from this video</label><textarea id="sourceText" placeholder="Paste your English lesson. Keep chapter headings and timestamps when available." maxlength="250000" aria-describedby="textHelp"></textarea>
+<p id="textHelp" class="hint">Keep chapter headings for better organisation. Your source stays in this tab; download the pack before leaving.</p>
+<div class="row"><button class="primary" id="makeNotes">Build learning pack</button><button class="ghost" id="clearBtn">Clear</button></div>
 </div>
 <div id="filePanel" hidden>
 <p class="hint">English audio or video · MP3, WAV, M4A, MP4 or WebM. Start with a short clip, especially on a phone.</p>
 <label class="drop" id="dropZone" for="fileInput"><div><span class="upload-icon">↑</span><strong>Choose your recording</strong><span>Files stay on your device during processing.</span></div></label><input id="fileInput" type="file" accept=".mp3,.wav,.m4a,.mp4,.webm">
 <div id="fileCard" class="file"><div class="file-main"><div id="fileName" class="file-name"></div><div id="fileMeta" class="file-meta"></div></div><button class="ghost small" id="removeFile">Remove</button></div>
-<div class="row"><button class="primary" id="transcribeBtn" disabled>Transcribe & make notes</button></div>
+<div class="row"><button class="primary" id="transcribeBtn" disabled>Transcribe & start learning</button></div>
 <p class="privacy">AI transcription downloads a speech model the first time. Internet is needed for that download; speed and accuracy depend on your device and recording. Keep this tab open.</p>
 <p class="privacy">Beta input ceiling: 100 MB / 10 minutes. These are protective limits, not a guarantee every device can process the maximum. Shorter audio files use less memory.</p>
 </div>
 <div id="status" class="notice" role="status" aria-live="polite" hidden><span id="statusText"></span><div><button class="ghost small" id="cancelBtn" hidden>Cancel transcription</button></div></div>
 </div>
 <div class="panel" id="results" hidden tabindex="-1">
-<p class="step" id="resultLabel">Your study sheet</p><h2>Keep what matters.</h2><p class="hint" id="resultMeta"></p>
-<div class="result-actions"><button class="dark" id="downloadNotes">Download study sheet</button><button class="ghost" id="copyNotes">Copy notes</button></div>
+<p class="step" id="resultLabel">Your learning pack</p><h2>Make the lesson stick.</h2><p class="hint" id="resultMeta"></p>
+<div class="result-actions"><button class="dark" id="downloadNotes">Download learning pack</button><button class="ghost" id="copyNotes">Copy learning pack</button></div>
+<p id="qualityNote" class="quality" hidden></p>
+<div id="learningArea">
+<h3>1. Understand the lesson</h3><p class="hint">Open a topic to read selected source passages and the surrounding explanation.</p>
 <ol id="points" class="points"></ol>
-<p class="review-note">Selected source passages, not a complete summary. Check the surrounding lesson before relying on a point. AI transcripts can contain mistakes.</p>
-<details id="transcriptDetails"><summary>Review or edit the transcript</summary><textarea id="transcript" aria-label="Editable transcript"></textarea><div class="row"><button class="ghost" id="regenerate">Update notes from edits</button><button class="ghost" id="downloadTranscript">Download transcript</button></div><p class="hint">Editing removes timestamp links until you rebuild from the original timestamped transcript.</p></details>
+<p class="review-note">Passages come from your transcript and may contain caption errors. They are selected excerpts, not independent explanations or fact-checks.</p>
+<section id="practice" class="practice" aria-labelledby="practiceHeading">
+<h3 id="practiceHeading">2. Try without looking</h3><p class="hint">Recall the missing term, or explain the idea in your own words. Then compare with the source.</p>
+<div class="progress-box"><p id="progressText" aria-live="polite"></p><progress id="learningProgress" value="0" max="1" aria-label="Sections marked understood"></progress></div>
+<div class="row practice-tabs" aria-label="Practice mode"><button class="ghost" data-practice="cards" aria-pressed="true">Flashcards</button><button class="ghost" data-practice="quiz" aria-pressed="false">Self-test</button><button class="ghost" data-practice="review" aria-pressed="false">Review list</button></div>
+<p id="emptyReview" class="notice" hidden>No items need review right now. Mark a card “Review again” to add it here.</p>
+<div id="practiceCard" class="practice-card"><p class="step" id="cardCounter" aria-live="polite"></p><h3 id="cardTopic"></h3><p class="prompt" id="cardPrompt"></p>
+<div id="answerInputWrap" hidden><label for="yourAnswer">Your explanation</label><textarea id="yourAnswer" placeholder="What do you remember? Write a short answer before revealing the reference." maxlength="5000"></textarea></div>
+<button id="showAnswer" class="dark">Reveal source answer</button>
+<div id="referenceAnswer" class="reference" hidden><strong>Compare with the source</strong><p id="referenceText"></p></div>
+<div class="row" id="assessment" hidden><button class="dark" id="markUnderstood">I understood this</button><button class="ghost" id="markReview">Review again</button></div>
+<p class="hint" id="cardState" aria-live="polite"></p><div class="card-nav"><button class="ghost" id="previousCard">← Previous</button><button class="ghost" id="nextCard">Next →</button></div></div>
+<p class="review-note">You assess your answer after comparing it. VideoBrief does not automatically grade correctness. Progress lasts for this session and is included in your download.</p>
+</section>
+<section class="review-plan"><h3>3. Come back to what was difficult</h3><ol><li><strong>Today:</strong> practise, reveal the reference, and mark the topics you want to revisit.</li><li><strong>Tomorrow:</strong> retry those topics without checking first.</li><li><strong>In three days:</strong> mix questions from across the lesson.</li></ol><p class="hint">A suggested routine. Download your pack to study offline; there are no automatic reminders.</p></section>
+</div>
+<details id="transcriptDetails"><summary>Review or edit the transcript</summary><textarea id="transcript" aria-label="Editable transcript"></textarea><div class="row"><button class="ghost" id="regenerate">Rebuild learning pack</button><button class="ghost" id="downloadTranscript">Download transcript</button></div><p class="hint">Rebuilding resets practice progress. Keep timestamps and headings if you want them in the new pack.</p></details>
 </div>
 </section>
-<section class="about"><p class="eyebrow">Why I’m building this</p><h2>A useful lesson should be easy to revisit.</h2><p>I’m building VideoBrief to help learners turn long recordings into something they can review and keep. The aim is simple: useful notes without an account or a paid subscription, with the original source close enough to check.</p><p>This is an early, English-language beta. YouTube links need a pasted transcript. Uploaded recordings use AI speech recognition on your device; study highlights use sentence selection. I’m improving reliability before adding more features.</p><details><summary>Privacy, downloads & limitations</summary><p>VideoBrief does not send your recording or transcript to an AI server and does not save it to an account. Refreshing closes your study session, so download anything you want to keep. The speech model and app files may be cached by your browser. Opening a YouTube video connects to YouTube; loading transcription downloads third-party model files. Those services receive ordinary network requests.</p><p>Only upload media you have permission to use. This tool cannot retrieve arbitrary YouTube captions or download YouTube audio from a link. No paid service or API key is required.</p></details></section>
+<section class="about"><p class="eyebrow">Why I’m building this</p><h2>From watching to practising.</h2><p>I’m building VideoBrief to help learners do something with a lesson: explain it, test their recall, and notice what needs another look. The original source stays close enough to check, and the pack can be downloaded for offline study.</p><p>This English-language beta uses source passages and practice prompts. It does not rewrite lessons with a language model or automatically grade answers. Recordings use AI speech recognition on your device. On the public site, YouTube lessons currently need a pasted transcript.</p><details><summary>Privacy, downloads & limitations</summary><p>VideoBrief does not send your recording or pasted transcript to an AI server or save it to an account. Refreshing closes your study session, including answers and review marks, so download anything you want to keep. The speech model and app files may be cached by your browser. Opening a YouTube video connects to YouTube; transcription downloads third-party model files.</p><p>Only upload media you have permission to use. The optional local helper can request available English captions from YouTube; availability can change or be blocked. It sends the video ID to YouTube and runs only on your computer. No public caption service is connected to this site. No paid service or API key is required.</p></details></section>
 </main><footer class="shell"><span>VideoBrief AI · Built by Mezz</span><span>Free beta · No account · Save your notes before leaving</span></footer>
-<script type="module" src="./app.js"></script>
+<script type="module" src="./app.js?v=10"></script>
 </body></html>

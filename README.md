@@ -1,33 +1,57 @@
-# VideoBrief AI
+# VideoBrief AI — Learning beta v10
 
-Free English study highlights from pasted transcripts and recordings. Live at https://mezz99.github.io/student-video-ai/
+A free English learning companion: topic sections, source passages, flashcards, written self-tests, self-assessed review lists, and a downloadable learning pack.
 
-## Why it exists
-
-VideoBrief helps learners revisit a lesson without replaying the entire recording. It keeps original passages and nearby context beside every highlight. It is an early beta, not a validated learning-outcomes claim or a client case study.
+Live: https://mezz99.github.io/student-video-ai/
 
 ## Try it
 
-Choose **Try a sample lesson** for an original photosynthesis example. Or paste an English transcript and choose **Make study notes**. Download a Markdown study sheet to keep notes and the transcript offline.
+Select **Try a sample lesson**, read a section, then use **Flashcards**, **Self-test**, and **Review list**. Write an explanation before revealing the reference. Mark it understood or save it for review. Download the pack to retain the questions, answers, review list, answer key and original transcript offline.
 
-- YouTube links open an embedded player. Paste the transcript separately; automatic caption retrieval from arbitrary links is not implemented.
-- Direct transcript input does not require a video link, account, model download or AI API key.
-- Audio/video transcription uses Whisper Tiny English in a browser worker. First use downloads the model from Hugging Face through Transformers.js (Apache-2.0 projects); inference processes audio locally.
-- Highlights use transparent extractive sentence ranking. They do not use a generative summary model. Original wording, numbers and qualifications are preserved, with timestamp links when supplied.
-- Accepted recording extensions: MP3, WAV, M4A, MP4, WebM. Actual codec support depends on the browser. Protective input ceilings are 100 MB and 10 minutes; a device may fail below these ceilings. Prefer short clips on phones.
-- Cancel stops the speech worker and prevents stale results. Initial audio decoding can still briefly occupy the browser while it releases resources.
-- English only. Recognition and highlight selection can be wrong; check the source.
+No account or subscription. Session answers and progress are not persisted: download before refreshing or leaving.
 
-## Privacy and cost
+## YouTube: public site and local helper
 
-No account, backend, paid API, analytics, database or transcript persistence is configured. Download work before refreshing. App/model files may be cached by the browser. YouTube embeds and model/CDN downloads contact their respective providers and expose ordinary network metadata. There is no claim that initial model downloads work offline.
+The public GitHub Pages site is link-first, but currently still needs pasted captions. No public caption service is connected. GitHub Pages cannot run Python.
 
-## Development
+The optional local helper imports available English captions and chapter headings on your computer:
 
-Serve this directory over HTTP (for example `python -m http.server 8765`) and open it in a browser. Production needs HTTPS for browser features. Run the pure processing regression tests with `node --test tests/study.test.mjs`.
+```sh
+python -m pip install -r requirements.txt
+python server.py
+```
 
-## Next validation
+Open http://127.0.0.1:8766 and paste a YouTube link. Python 3.10+ is required. The helper listens only on loopback, not the public internet. Stop it with Ctrl+C. No API key or paid service is used.
 
-Measure transcription accuracy and speed on representative phones, test longer recordings, and collect real student feedback. The demo does not establish accuracy, saved time or learning improvements. A contest entry should describe actual functionality and a concrete plan to improve it, without claiming universal YouTube support or guaranteed device capacity.
+Tested with ddq8JIMhz7c: 3,022 caption segments were retrieved and chapter headings were imported. This establishes that the specific video worked on this connection, not universal availability. Missing captions, non-English tracks and blocked requests can prevent retrieval. No proxy rotation or restriction bypass is implemented. The client times out and offers pasted text or owned recordings as fallbacks.
 
-The existing GitHub Pages deployment serves these static files. No hosting purchase is required by this application.
+Public hosting remains separate work: the Cloudflare CLI is not authenticated, and no public caption endpoint has been deployed or reliability-tested. The client enables /api/captions only on localhost.
+
+Library: https://github.com/jdepoix/youtube-transcript-api (MIT). Its documentation describes cloud-IP blocking. The official caption API requires edit permission on the video: https://developers.google.com/youtube/v3/docs/captions/download
+
+## Learning features and limits
+
+- Recognises chapter headings and filters obvious promotional and introduction sections. The original transcript remains in the download.
+- Selects source passages without fixed-word cuts. Unpunctuated captions use inferred discourse boundaries, so source review is still needed.
+- Creates fill-in-the-blank cards and open explanation prompts with source references.
+- Uses self-assessment, not automatic correctness scores.
+- Suggests a today/tomorrow/three-days routine. No automatic notifications.
+- Supports the first 40 usable sections per pack and 250,000 characters; shows a notice when the section limit is reached.
+
+This is a source-based learning prototype, not a generative tutor. It does not produce independent explanations, fact-check source claims, correct every transcription error, or establish learning gains.
+
+## Recordings and privacy
+
+Whisper Tiny English runs locally in a browser worker using fp32. First use downloads model files through Transformers.js from Hugging Face/CDN services. Recordings and pasted transcripts are not sent to an AI server. YouTube embeds, model downloads and the local helper's YouTube requests contact those providers.
+
+Recordings: MP3, WAV, M4A, MP4 or WebM, subject to browser codec support. Protective ceilings: 100 MB / 10 minutes, not guaranteed device capacities. Prefer short clips on phones. Cancel stops the worker and blocks stale results.
+
+## Verification
+
+```sh
+node --test tests/study.test.mjs tests/learning.test.mjs
+```
+
+Coverage includes chapter recognition, sponsor filtering, source qualifiers, timestamps, caption line continuity, flashcards, review transitions, downloadable answers, input ceilings and URL validation.
+
+Actual iPhone hardware and maximum-size recordings still need separate testing. No contest entry has been submitted.

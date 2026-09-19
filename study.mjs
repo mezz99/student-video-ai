@@ -66,7 +66,7 @@ export function parseTranscript(input) {
     text += cue.text;
     return {...cue, start, end: text.length};
   });
-  return {text, cues: ranges};
+  return {text, cues: ranges, raw: String(input)};
 }
 
 const STOP = new Set('the a an and or but to of in on for with at by from is are was were be been being it this that these those i you he she we they as so do does did have has had can could would should will just also more some into about their our your its than then there here very only one all each every'.split(' '));
